@@ -2,7 +2,7 @@ from scipy.special import erfc
 from scipy.integrate import quad
 import numpy as np
 
-def point2(c0, x, y, t, v, Dx, Dy, n, Q, xc, yc, lamb=0):
+def point2(c0, x, y, t, v, Dx, Dy, n, Qa, xc, yc, lamb=0):
     x = np.atleast_1d(x)
     y = np.atleast_1d(y)
     t = np.atleast_1d(t)
@@ -19,7 +19,7 @@ def point2(c0, x, y, t, v, Dx, Dy, n, Q, xc, yc, lamb=0):
     integrate_vec = np.vectorize(integrate)
 
     term = integrate_vec(t, x, y)
-    term0 = Q / (4 * n * np.pi * np.sqrt(Dx * Dy)) * np.exp(v * (x - xc) / (2 * Dx))
+    term0 = Qa / (4 * n * np.pi * np.sqrt(Dx * Dy)) * np.exp(v * (x - xc) / (2 * Dx))
     
     return c0 * term0 * term
 
