@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "adepy"
+dynamic = ["version"]
+authors = [{ name = "Cas Neyens", email = "cas.neyens@gmail.be" }]
+description = "Analytical solutions for solute transport in groundwater with Python"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+dependencies = ["numpy", "scipy"]
+classifiers = [
+        'Programming Language :: Python :: 3 :: Only',
+        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
+        'Programming Language :: Python :: 3.13',
+        'Topic :: Scientific/Engineering :: Hydrology',
+        'Intended Audience :: Science/Research',
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
+        "Typing :: Typed",
+]
+
+[project.urls]
+homepage = "https://github.com/cneyens/adepy"
+repository = "https://github.com/cneyens/adepy"
+
+[tool.setuptools.dynamic]
+version = { attr = "adepy._version.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 88
+lint.select = ["E", "F", "W"]
+exclude = ["migrations/", "tests/"]
+lint.ignore = ["E501"]
