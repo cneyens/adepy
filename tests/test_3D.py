@@ -1,4 +1,4 @@
-from adepy.threeD import point3, patchi
+from adepy.threeD import point3, patchi, patchf
 import numpy as np
 
 def test_point3_shape():
@@ -82,5 +82,28 @@ def test_patchi_shape():
     t = [1000, 2000, 3000]
     c = patchi(100, 1050, 1000, 1750, t=t, v=1, Dx=100, Dy=20, Dz=20, 
        y1=900, y2=2100, z1=1350, z2=1650, lamb=lamb)
+    
+    assert c.shape == (len(t),)   
+
+
+def test_patchf():
+    
+    c = patchf(c0=1000, x=1050, y=1000, z=50, t=3000, v=1, Dx=200, Dy=60, Dz=10, w=3000, h=100, y1=400, y2=2000,
+               z1=50, z2=100) # 468.69839
+    
+    np.testing.assert_approx_equal(c[0], 468.69839)
+    
+def test_patchf_shape():
+    x, y = np.meshgrid([1050, 1075, 1080], [1000, 1002, 1004])
+    lamb = np.log(2) / (28 * 365)
+    
+    c = patchf(100, x, y, 1750, t=3652.5, v=1, Dx=100, Dy=20, Dz=20,
+               y1=900, y2=2100, z1=1350, z2=1650, w=4000, h=2000)
+    
+    assert c.shape == (len(x), len(y))   
+    
+    t = [1000, 2000, 3000]
+    c = patchf(100, 1050, 1000, 1750, t=t, v=1, Dx=100, Dy=20, Dz=20, 
+               y1=900, y2=2100, z1=1350, z2=1650, w=4000, h=2000, lamb=lamb)
     
     assert c.shape == (len(t),)   

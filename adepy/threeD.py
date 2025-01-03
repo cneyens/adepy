@@ -1,6 +1,7 @@
-from scipy.special import erfc
-from scipy.integrate import quad
 import numpy as np
+from numba import njit
+from adepy._helpers import _erfc_nb as erfc
+from adepy._helpers import _integrate as integrate
 
 def point3(c0, x, y, z, t, v, n, Dx, Dy, Dz, Q, xc, yc, zc, lamb=0):
     x = np.atleast_1d(x)
@@ -17,21 +18,14 @@ def point3(c0, x, y, z, t, v, n, Dx, Dy, Dz, Q, xc, yc, zc, lamb=0):
     
     return c0 * Q * a * b
 
-def patchf(c0, x, y, z, t, v, Dx, Dy, Dz, w, h, y1, y2, z1, z2, lamb=0, nterm=50):
-    
-    x = np.atleast_1d(x)
-    y = np.atleast_1d(y)
-    z = np.atleast_1d(z)
-    t = np.atleast_1d(t)
-
-    if len(t) > 1 and (len(x) > 1 or len(y) > 1 or len(z) > 1):
-        raise ValueError('If multiple values for t are specified, only one x, y and z value are allowed')
+# @njit
+def _series_patchf(x, y, z, t, v, Dx, Dy, Dz, w, h, y1, y2, z1, z2, lamb, nterm):
 
     if len(t) > 1:
         series = np.zeros_like(t, dtype=np.float64)
     else:
         series = np.zeros_like(x, dtype=np.float64)
-    
+
     for m in range(nterm):
         zeta = m * np.pi / h
         
@@ -64,36 +58,40 @@ def patchf(c0, x, y, z, t, v, Dx, Dy, Dz, w, h, y1, y2, z1, z2, lamb=0, nterm=50
             add = np.where(np.isneginf(add), 0.0, add)
             add = np.where(np.isnan(add), 0.0, add)
             series += add
+    
+    return series
 
-    return c0 * series
-
-def patchi(c0, x, y, z, t, v, Dx, Dy, Dz, y1, y2, z1, z2, lamb=0):
+def patchf(c0, x, y, z, t, v, Dx, Dy, Dz, w, h, y1, y2, z1, z2, lamb=0, nterm=50):
+    
     x = np.atleast_1d(x)
     y = np.atleast_1d(y)
     z = np.atleast_1d(z)
     t = np.atleast_1d(t)
 
-    def integrate(t, x, y, z):
-        def integrand(tau, x, y, z):
-            zeta = tau
-            ig = 1 / zeta**3 * np.exp(-(v**2 / (4 * Dx) + lamb) * zeta**4 - x**2 / (4 * Dx * zeta**4)) *\
-                     (erfc((y1 - y) / (2 * zeta**2 * np.sqrt(Dy))) - erfc((y2 - y) / (2 * zeta**2 * np.sqrt(Dy)))) *\
-                     (erfc((z1 - z) / (2 * zeta**2 * np.sqrt(Dz))) - erfc((z2 - z) / (2 * zeta**2 * np.sqrt(Dz))))
-            
-            # ig = (tau**(-3 / 2)) * np.exp(-(v**2 / (4 * Dx) + lamb) * tau - x**2 / (4 * Dx * tau)) *\
-            #         (erfc((y1 - y) / (2 * np.sqrt(Dy * tau))) - erfc((y2 - y) / (2 * np.sqrt(Dy * tau)))) *\
-            #         (erfc((z1 - z) / (2 * np.sqrt(Dz * tau))) - erfc((z2 - z) / (2 * np.sqrt(Dz * tau))))
-            return ig
+    if len(t) > 1 and (len(x) > 1 or len(y) > 1 or len(z) > 1):
+        raise ValueError('If multiple values for t are specified, only one x, y and z value are allowed')
 
-        F = quad(integrand, 0, t**(1/4), args=(x, y, z), full_output=1)[0]
-        # F = quad(integrand, 0, t, args=(x, y, z), full_output=1)[0]
-        return F
+    series = _series_patchf(x, y, z, t, v, Dx, Dy, Dz, w, h, y1, y2, z1, z2, lamb, nterm)
 
-    integrate_vec = np.vectorize(integrate)
+    return c0 * series
+
+@njit
+def _integrand_patchi(tau, x, y, z, v, Dx, Dy, Dz, y1, y2, z1, z2, lamb):
+    ig = 1 / tau**3 * np.exp(-(v**2 / (4 * Dx) + lamb) * tau**4 - x**2 / (4 * Dx * tau**4)) *\
+                (erfc((y1 - y) / (2 * tau**2 * np.sqrt(Dy))) - erfc((y2 - y) / (2 * tau**2 * np.sqrt(Dy)))) *\
+                (erfc((z1 - z) / (2 * tau**2 * np.sqrt(Dz))) - erfc((z2 - z) / (2 * tau**2 * np.sqrt(Dz))))
     
-    term = integrate_vec(t, x, y, z)
+    return ig
+
+def patchi(c0, x, y, z, t, v, Dx, Dy, Dz, y1, y2, z1, z2, lamb=0, order=100):
+    x = np.atleast_1d(x)
+    y = np.atleast_1d(y)
+    z = np.atleast_1d(z)
+    t = np.atleast_1d(t)
+
+    term = integrate(_integrand_patchi, t**(1/4), x, y, z, v, Dx, Dy, Dz, y1, y2, z1, z2, lamb, order=order, method='legendre')
+
     term0 = x * np.exp(v * x / (2 * Dx)) / (2 * np.sqrt(np.pi * Dx))
-    # term0 = x * np.exp(v * x / (2 * Dx)) / (8 * np.sqrt(np.pi * Dx))
 
     return c0 * term0 * term
     

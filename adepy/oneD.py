@@ -1,6 +1,19 @@
-from scipy.special import erfc
 from scipy.optimize import brentq
 import numpy as np
+from numba import njit, vectorize
+from adepy._helpers import _erfc_nb as erfc
+
+# @njit
+def _bserie_finite1(betas, x, t, Pe, L, D, lamb):
+    bs = 0.0
+    if lamb == 0:
+        for b in betas:
+            bs += b * np.sin(b * x / L) * (b**2 + (Pe / 2)**2) * np.exp(-b**2 * D * t / L**2) /\
+                    ((b**2 + (Pe / 2)**2 + Pe / 2) * (b**2 + (Pe / 2)**2 + lamb / D * L**2))
+    else:
+        for b in betas:
+            bs += b * np.sin(b * x / L) * np.exp(-b**2 * D * t / L**2) / (b**2 + (Pe / 2)**2 + Pe / 2)
+    return bs
 
 def finite1(c0, x, t, v, D, L, lamb=0, nterm=1000):
     
@@ -24,19 +37,8 @@ def finite1(c0, x, t, v, D, L, lamb=0, nterm=1000):
         betas.append(brentq(betaf, mi, ma))
 
     # calculate infinite sum up to nterm terms
-    def bserie(x, t):
-        bs = 0.0
-        if lamb == 0:
-            for b in betas:
-                bs += b * np.sin(b * x / L) * (b**2 + (Pe / 2)**2) * np.exp(-b**2 * D * t / L**2) /\
-                        ((b**2 + (Pe / 2)**2 + Pe / 2) * (b**2 + (Pe / 2)**2 + lamb / D * L**2))
-        else:
-            for b in betas:
-                bs += b * np.sin(b * x / L) * np.exp(-b**2 * D * t / L**2) / (b**2 + (Pe / 2)**2 + Pe / 2)
-        return bs
-
-    bseries_vec = np.vectorize(bserie)
-    series = bseries_vec(x, t)
+    # bseries_vec = np.vectorize(_bserie_finite1)
+    series = _bserie_finite1(betas, x, t, Pe, L, D, lamb)
 
     if lamb == 0:
         term0 = 1.0
@@ -48,6 +50,14 @@ def finite1(c0, x, t, v, D, L, lamb=0, nterm=1000):
     term1 = -2 * np.exp(v * x / (2 * D) - v**2 * t / (4 * D) - lamb * t)
            
     return c0 * (term0 + term1 * series)
+
+# @njit
+def _bserie_finite3(betas, x, t, Pe, L, D, lamb):
+    bs = 0.0
+    for b in betas:
+        bs += b * (b * np.cos(b * x / L) + (Pe / 2) * np.sin(b * x / L)) / (b**2 + (Pe / 2)**2 + Pe) *\
+                np.exp(-b**2 * D * t / L**2) / (b**2 + (Pe / 2)**2 + lamb * L**2 / D)
+    return bs
 
 def finite3(c0, x, t, v, D, L, lamb=0, nterm=1000):
     # https://github.com/BYL4746/columntracer/blob/main/columntracer.py
@@ -72,15 +82,8 @@ def finite3(c0, x, t, v, D, L, lamb=0, nterm=1000):
         betas.append(brentq(betaf, mi, ma))
 
     # calculate infinite sum up to nterm terms
-    def bserie(x, t):
-        bs = 0.0
-        for b in betas:
-            bs += b * (b * np.cos(b * x / L) + (Pe / 2) * np.sin(b * x / L)) / (b**2 + (Pe / 2)**2 + Pe) *\
-                    np.exp(-b**2 * D * t / L**2) / (b**2 + (Pe / 2)**2 + lamb * L**2 / D)
-        return bs
-
-    bseries_vec = np.vectorize(bserie)
-    series = bseries_vec(x, t)
+    # bseries_vec = np.vectorize(_bserie_finite3)
+    series = _bserie_finite3(betas, x, t, Pe, L, D, lamb)
 
     if lamb == 0:
         term0 = 1.0

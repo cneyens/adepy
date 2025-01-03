@@ -1,7 +1,7 @@
 from ._version import __version__
 
-import adepy.oneD as oneD
-import adepy.twoD as twoD
-import adepy.threeD as threeD
+from adepy.oneD import finite1, finite3, seminf1, seminf3
+from adepy.twoD import point2, stripf, stripi, gauss
+from adepy.threeD import point3, patchi, patchf
 
 

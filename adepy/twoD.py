@@ -1,8 +1,14 @@
-from scipy.special import erfc
-from scipy.integrate import quad
 import numpy as np
+from numba import njit
+from adepy._helpers import _erfc_nb as erfc
+from adepy._helpers import _integrate as integrate
 
-def point2(c0, x, y, t, v, Dx, Dy, n, Qa, xc, yc, lamb=0):
+@njit
+def _integrand_point2(tau, x, y, v, Dx, Dy, xc, yc, lamb):
+    return 1 / tau * np.exp(-(v**2 / (4 * Dx) + lamb) * tau - (x - xc)**2 / (4 * Dx * tau) - (y - yc)**2 / (4 * Dy * tau))
+
+def point2(c0, x, y, t, v, n, Dx, Dy, Qa, xc, yc, lamb=0, order=100):
+
     x = np.atleast_1d(x)
     y = np.atleast_1d(y)
     t = np.atleast_1d(t)
@@ -10,30 +16,13 @@ def point2(c0, x, y, t, v, Dx, Dy, n, Qa, xc, yc, lamb=0):
     if len(t) > 1 and (len(x) > 1 or len(y) > 1):
         raise ValueError('If multiple values for t are specified, only one x and y value are allowed')
 
-    def integrate(t, x, y):
-        def integrand(tau, x, y):
-            return 1 / tau * np.exp(-(v**2 / (4 * Dx) + lamb) * tau - (x - xc)**2 / (4 * Dx * tau) - (y - yc)**2 / (4 * Dy * tau))
-    
-        F = quad(integrand, 0, t, args=(x, y), full_output=1)[0]
-        return F
-    integrate_vec = np.vectorize(integrate)
-
-    term = integrate_vec(t, x, y)
+    term = integrate(_integrand_point2, t, x, y, v, Dx, Dy, xc, yc, lamb, order=order, method='legendre')
     term0 = Qa / (4 * n * np.pi * np.sqrt(Dx * Dy)) * np.exp(v * (x - xc) / (2 * Dx))
     
     return c0 * term0 * term
 
-def stripf(c0, x, y, t, v, Dx, Dy, y2, y1, w, lamb=0, nterm=100):
-    x = np.atleast_1d(x)
-    y = np.atleast_1d(y)
-    t = np.atleast_1d(t)
-
-    if lamb != 0 and Dy != 0:
-        raise ValueError('Either Dy or lamb should be zero')
-
-    if len(t) > 1 and (len(x) > 1 or len(y) > 1):
-        raise ValueError('If multiple values for t are specified, only one x and y value are allowed')
-
+# @njit
+def _series_stripf(x, y, t, v, Dx, Dy, y2, y1, w, lamb, nterm):
     if len(t) > 1:
         series = np.zeros_like(t, dtype=np.float64)
     else:
@@ -51,7 +40,7 @@ def stripf(c0, x, y, t, v, Dx, Dy, y2, y1, w, lamb=0, nterm=100):
             Pn = (np.sin(eta * y2) - np.sin(eta * y1)) / (n * np.pi)
 
         term = np.exp((x * (v - beta)) / (2 * Dx)) * erfc((x - beta * t) / (2 * np.sqrt(Dx * t))) +\
-                np.exp((x * (v + beta)) / (2 * Dx)) * erfc((x + beta * t) / (2 * np.sqrt(Dx * t)))
+            np.exp((x * (v + beta)) / (2 * Dx)) * erfc((x + beta * t) / (2 * np.sqrt(Dx * t)))
         
         add = Ln * Pn * np.cos(eta * y) * term
 
@@ -59,49 +48,54 @@ def stripf(c0, x, y, t, v, Dx, Dy, y2, y1, w, lamb=0, nterm=100):
         add = np.where(np.isnan(add), 0.0, add)
         series += add
 
+    return series
+
+def stripf(c0, x, y, t, v, Dx, Dy, y2, y1, w, lamb=0, nterm=100):
+    x = np.atleast_1d(x)
+    y = np.atleast_1d(y)
+    t = np.atleast_1d(t)
+
+    if lamb == 0 and Dy == 0:
+        raise ValueError('Either Dy or lamb should be non-zero')
+
+    if len(t) > 1 and (len(x) > 1 or len(y) > 1):
+        raise ValueError('If multiple values for t are specified, only one x and y value are allowed')
+
+    series = _series_stripf(x, y, t, v, Dx, Dy, y2, y1, w, lamb, nterm)
+
     return c0 * series
 
-def stripi(c0, x, y, t, v, Dx, Dy, y2, y1, lamb=0):
+@njit
+def _integrand_stripi(tau, x, y, v, Dx, Dy, y2, y1, lamb):
+    # error in Wexler, 1992, eq. 91a: denominator of last erfc term should be multiplied by 2. Correct in code below.
+    ig = (tau**(-3 / 2)) * np.exp(-(v**2 / (4 * Dx) + lamb) * tau - x**2 / (4 * Dx * tau)) *\
+        (erfc((y1 - y) / (2 * np.sqrt(Dy * tau))) - erfc((y2 - y) / (2 * np.sqrt(Dy * tau))))
+    return ig
+
+def stripi(c0, x, y, t, v, Dx, Dy, y2, y1, lamb=0, order=100):
 
     x = np.atleast_1d(x)
     y = np.atleast_1d(y)
     t = np.atleast_1d(t)
 
-    def integrate(t, x, y):
-        # error in Wexler, 1992, eq. 91a: denominator of last erfc term should be multiplied by 2. Correct in code below.
-        def integrand(tau, x, y):
-            ig = (tau**(-3 / 2)) * np.exp(-(v**2 / (4 * Dx) + lamb) * tau - x**2 / (4 * Dx * tau)) *\
-                (erfc((y1 - y) / (2 * np.sqrt(Dy * tau))) - erfc((y2 - y) / (2 * np.sqrt(Dy * tau))))
-            return ig
-
-        F = quad(integrand, 0, t, args=(x, y), full_output=1)[0]
-        return F
-
-    integrate_vec = np.vectorize(integrate)
-
-    term = integrate_vec(t, x, y)
+    term = integrate(_integrand_stripi, t, x, y, v, Dx, Dy, y2, y1, lamb, order=order, method='legendre')
     term0 = x / (4 * np.sqrt(np.pi * Dx)) * np.exp(v * x / (2 * Dx))
 
     return c0 * term0 * term
 
-def gauss(c0, x, y, t, v, Dx, Dy, yc, sigma, lamb=0):
+@njit
+def _integrand_gauss(tau, x, y, v, Dx, Dy, yc, sigma, lamb):
+    num = np.exp(-(v**2 / (4 * Dx) + lamb) * tau - x**2 / (4 * Dx * tau) - ((y - yc)**2) / (4 * (Dy * tau + 0.5 * sigma**2)))
+    denom = (tau**(3 / 2)) * np.sqrt(Dy * tau + 0.5 * sigma**2)
+    return num / denom
+
+def gauss(c0, x, y, t, v, Dx, Dy, yc, sigma, lamb=0, order=100):
     
     x = np.atleast_1d(x)
     y = np.atleast_1d(y)
     t = np.atleast_1d(t)
 
-    def integrate(t, x, y):
-        def integrand(tau, x, y):
-            num = np.exp(-(v**2 / (4 * Dx) + lamb) * tau - x**2 / (4 * Dx * tau) - ((y - yc)**2) / (4 * (Dy * tau + 0.5 * sigma**2)))
-            denom = (tau**(3 / 2)) * np.sqrt(Dy * tau + 0.5 * sigma**2)
-            return num / denom
-    
-        F = quad(integrand, 0, t, args=(x, y), full_output=1)[0]
-        return F
-
-    integrate_vec = np.vectorize(integrate)
-
-    term = integrate_vec(t, x, y)
+    term = integrate(_integrand_gauss, t, x, y, v, Dx, Dy, yc, sigma, lamb, order=order, method='legendre')
     term0 = x * sigma / np.sqrt(8 * np.pi * Dx) * np.exp(v * x / (2 * Dx))
 
     return c0 * term0 * term
