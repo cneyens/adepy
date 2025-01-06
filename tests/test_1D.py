@@ -1,10 +1,15 @@
 from adepy.oneD import finite1, finite3, seminf1, seminf3
 import numpy as np
 
+# TODO add tests with retardation and decay
+
 def test_finite1():
 
     c = finite1(1, 2.5, 5, v=0.6, D=0.6, L=12) # 0.73160
     np.testing.assert_approx_equal(c[0], 0.73160, significant=5)
+
+    c = finite1(1, 2.5, 5, v=0.6, D=0.6, L=12, R=8.31) # 0.0105
+    np.testing.assert_approx_equal(c[0], 0.01054, significant=4)
 
 def test_finite1_shape():
     x = [5.0, 6.0, 7.0]

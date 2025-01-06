@@ -7,11 +7,17 @@ from adepy._helpers import _integrate as integrate
 def _integrand_point2(tau, x, y, v, Dx, Dy, xc, yc, lamb):
     return 1 / tau * np.exp(-(v**2 / (4 * Dx) + lamb) * tau - (x - xc)**2 / (4 * Dx * tau) - (y - yc)**2 / (4 * Dy * tau))
 
-def point2(c0, x, y, t, v, n, Dx, Dy, Qa, xc, yc, lamb=0, order=100):
+def point2(c0, x, y, t, v, n, Dx, Dy, Qa, xc, yc, lamb=0, R=1.0, order=100):
 
     x = np.atleast_1d(x)
     y = np.atleast_1d(y)
     t = np.atleast_1d(t)
+
+    # apply retardation coefficient to right-hand side
+    v = v / R
+    Dx = Dx / R
+    Dy = Dy / R
+    Qa = Qa / R
 
     if len(t) > 1 and (len(x) > 1 or len(y) > 1):
         raise ValueError('If multiple values for t are specified, only one x and y value are allowed')
@@ -50,10 +56,15 @@ def _series_stripf(x, y, t, v, Dx, Dy, y2, y1, w, lamb, nterm):
 
     return series
 
-def stripf(c0, x, y, t, v, Dx, Dy, y2, y1, w, lamb=0, nterm=100):
+def stripf(c0, x, y, t, v, Dx, Dy, y2, y1, w, lamb=0, R=1.0, nterm=100):
     x = np.atleast_1d(x)
     y = np.atleast_1d(y)
     t = np.atleast_1d(t)
+
+    # apply retardation coefficient to right-hand side
+    v = v / R
+    Dx = Dx / R
+    Dy = Dy / R
 
     if lamb == 0 and Dy == 0:
         raise ValueError('Either Dy or lamb should be non-zero')
@@ -72,11 +83,16 @@ def _integrand_stripi(tau, x, y, v, Dx, Dy, y2, y1, lamb):
         (erfc((y1 - y) / (2 * np.sqrt(Dy * tau))) - erfc((y2 - y) / (2 * np.sqrt(Dy * tau))))
     return ig
 
-def stripi(c0, x, y, t, v, Dx, Dy, y2, y1, lamb=0, order=100):
+def stripi(c0, x, y, t, v, Dx, Dy, y2, y1, lamb=0, R=1.0, order=100):
 
     x = np.atleast_1d(x)
     y = np.atleast_1d(y)
     t = np.atleast_1d(t)
+
+    # apply retardation coefficient to right-hand side
+    v = v / R
+    Dx = Dx / R
+    Dy = Dy / R
 
     term = integrate(_integrand_stripi, t, x, y, v, Dx, Dy, y2, y1, lamb, order=order, method='legendre')
     term0 = x / (4 * np.sqrt(np.pi * Dx)) * np.exp(v * x / (2 * Dx))
@@ -89,11 +105,16 @@ def _integrand_gauss(tau, x, y, v, Dx, Dy, yc, sigma, lamb):
     denom = (tau**(3 / 2)) * np.sqrt(Dy * tau + 0.5 * sigma**2)
     return num / denom
 
-def gauss(c0, x, y, t, v, Dx, Dy, yc, sigma, lamb=0, order=100):
+def gauss(c0, x, y, t, v, Dx, Dy, yc, sigma, lamb=0, R = 1.0, order=100):
     
     x = np.atleast_1d(x)
     y = np.atleast_1d(y)
     t = np.atleast_1d(t)
+    
+    # apply retardation coefficient to right-hand side
+    v = v / R
+    Dx = Dx / R
+    Dy = Dy / R
 
     term = integrate(_integrand_gauss, t, x, y, v, Dx, Dy, yc, sigma, lamb, order=order, method='legendre')
     term0 = x * sigma / np.sqrt(8 * np.pi * Dx) * np.exp(v * x / (2 * Dx))

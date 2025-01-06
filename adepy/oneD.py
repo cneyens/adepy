@@ -15,7 +15,7 @@ def _bserie_finite1(betas, x, t, Pe, L, D, lamb):
             bs += b * np.sin(b * x / L) * np.exp(-b**2 * D * t / L**2) / (b**2 + (Pe / 2)**2 + Pe / 2)
     return bs
 
-def finite1(c0, x, t, v, D, L, lamb=0, nterm=1000):
+def finite1(c0, x, t, v, D, L, lamb=0, R=1.0, nterm=1000):
     
     x = np.atleast_1d(x)
     t = np.atleast_1d(t)
@@ -23,6 +23,10 @@ def finite1(c0, x, t, v, D, L, lamb=0, nterm=1000):
     if len(x) > 1 and len(t) > 1:
         raise ValueError('Either x or t should have length 1')
         
+    # apply retardation coefficient to right-hand side
+    v = v / R
+    D = D / R
+
     Pe = v * L / D
     
     # find roots
@@ -59,7 +63,7 @@ def _bserie_finite3(betas, x, t, Pe, L, D, lamb):
                 np.exp(-b**2 * D * t / L**2) / (b**2 + (Pe / 2)**2 + lamb * L**2 / D)
     return bs
 
-def finite3(c0, x, t, v, D, L, lamb=0, nterm=1000):
+def finite3(c0, x, t, v, D, L, lamb=0, R=1.0, nterm=1000):
     # https://github.com/BYL4746/columntracer/blob/main/columntracer.py
 
     x = np.atleast_1d(x)
@@ -67,7 +71,11 @@ def finite3(c0, x, t, v, D, L, lamb=0, nterm=1000):
     
     if len(x) > 1 and len(t) > 1:
         raise ValueError('Either x or t should have length 1')
-        
+    
+    # apply retardation coefficient to right-hand side
+    v = v / R
+    D = D / R
+
     Pe = v * L / D
     
     # find roots
@@ -96,9 +104,13 @@ def finite3(c0, x, t, v, D, L, lamb=0, nterm=1000):
            
     return c0 * (term0 + term1 * series)
 
-def seminf1(c0, x, t, v, D, lamb=0):
+def seminf1(c0, x, t, v, D, lamb=0, R=1.0):
     x = np.atleast_1d(x)
     t = np.atleast_1d(t)
+
+    # apply retardation coefficient to right-hand side
+    v = v / R
+    D = D / R
 
     u = np.sqrt(v**2 + 4 * lamb * D)
     term = np.exp(x * (v - u) / (2 * D)) * erfc((x - u * t) / (2 * np.sqrt(D * t))) + \
@@ -106,10 +118,14 @@ def seminf1(c0, x, t, v, D, lamb=0):
 
     return c0 * 0.5 * term
 
-def seminf3(c0, x, t, v, D, lamb=0):
+def seminf3(c0, x, t, v, D, lamb=0, R=1.0):
     x = np.atleast_1d(x)
     t = np.atleast_1d(t)
 
+    # apply retardation coefficient to right-hand side
+    v = v / R
+    D = D / R
+    
     u = np.sqrt(v**2 + 4 * lamb * D)
     if lamb == 0:
         term = 0.5 * erfc((x - v * t) / (2 * np.sqrt(D * t))) + np.sqrt(t * v**2 / (np.pi * D)) * np.exp(-(x - v * t)**2 / (4 * D * t)) - \
