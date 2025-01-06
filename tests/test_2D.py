@@ -10,8 +10,8 @@ def test_point2_shape():
                t=100.0,
                v=0.1,
                n=0.25,
-               Dx=0.1,
-               Dy=0.1,
+               al=1,
+               ah=1,
                Qa=1.0,
                xc=0,
                yc=0,)
@@ -25,8 +25,8 @@ def test_point2_shape():
                t=t,
                v=0.1,
                n=0.25,
-               Dx=0.1,
-               Dy=0.1,
+               al=1,
+               ah=1,
                Qa=1.0,
                xc=0,
                yc=0,
@@ -38,7 +38,7 @@ def test_point2_shape():
 
 def test_point2():
 
-    c = point2(1000, 50, 475, [25,50, 80], v=2, Dx=60, Dy=12, n=0.25, Qa=12.5, xc=0, yc=500)
+    c = point2(1000, 50, 475, [25,50, 80], v=2, al=30, ah=6, n=0.25, Qa=12.5, xc=0, yc=500)
     
     np.testing.assert_approx_equal(c[0], 63.23244)
 
@@ -51,8 +51,8 @@ def test_stripf_shape():
                y=y,
                t=100.0,
                v=0.1,
-               Dx=0.1,
-               Dy=0.1,
+               al=1,
+               ah=1,
                y2=15,
                y1=9,
                w=20,)
@@ -65,8 +65,8 @@ def test_stripf_shape():
                y=11,
                t=t,
                v=0.1,
-               Dx=0.1,
-               Dy=0.1,
+               al=1,
+               ah=1,
                y2=15,
                y1=9,
                w=20,
@@ -92,8 +92,8 @@ def test_stripi_shape():
                y=y,
                t=100.0,
                v=0.1,
-               Dx=0.1,
-               Dy=0.1,
+               al=1,
+               ah=1,
                y2=15,
                y1=9,)
         
@@ -105,8 +105,8 @@ def test_stripi_shape():
                y=11,
                t=t,
                v=0.1,
-               Dx=0.1,
-               Dy=0.1,
+               al=1,
+               ah=1,
                y2=15,
                y1=9,
                lamb=0.05)
@@ -116,7 +116,7 @@ def test_stripi_shape():
 
 def test_stripi():
 
-    c = stripi(40, x=[2500, 500], y=[750,600], t=1826, v=1.42, Dx=100, Dy=20, y2=865, y1=635) # 8.85856    
+    c = stripi(40, x=[2500, 500], y=[750,600], t=1826, v=1.42, al=100/1.42, ah=20/1.42, y2=865, y1=635) # 8.85856    
 
     np.testing.assert_approx_equal(c[0], 8.85856, significant=5)
 
@@ -129,8 +129,8 @@ def test_gauss_shape():
                y=y,
                t=100.0,
                v=0.1,
-               Dx=0.1,
-               Dy=0.1,
+               al=1,
+               ah=1,
                yc=12,
                sigma=10,)
         
@@ -142,8 +142,8 @@ def test_gauss_shape():
                y=11,
                t=t,
                v=0.1,
-               Dx=0.1,
-               Dy=0.1,
+               al=1,
+               ah=1,
                yc=12,
                sigma=10,
                lamb=0.05)
@@ -153,6 +153,6 @@ def test_gauss_shape():
 
 def test_gauss():
 
-    c = gauss(1000, [1000,1050], [250,300], 300, 4, 150, 30, 450, 130) # 304.096099
+    c = gauss(1000, [1000,1050], [250,300], 300, 4, 37.5, 7.5, 450, 130) # 304.096099
 
     np.testing.assert_approx_equal(c[0], 304.096099)

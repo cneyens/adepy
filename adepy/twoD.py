@@ -7,11 +7,14 @@ from adepy._helpers import _integrate as integrate
 def _integrand_point2(tau, x, y, v, Dx, Dy, xc, yc, lamb):
     return 1 / tau * np.exp(-(v**2 / (4 * Dx) + lamb) * tau - (x - xc)**2 / (4 * Dx * tau) - (y - yc)**2 / (4 * Dy * tau))
 
-def point2(c0, x, y, t, v, n, Dx, Dy, Qa, xc, yc, lamb=0, R=1.0, order=100):
+def point2(c0, x, y, t, v, n, al, ah, Qa, xc, yc, Dm=0, lamb=0, R=1.0, order=100):
 
     x = np.atleast_1d(x)
     y = np.atleast_1d(y)
     t = np.atleast_1d(t)
+
+    Dx = al * v + Dm
+    Dy = ah * v + Dm
 
     # apply retardation coefficient to right-hand side
     v = v / R
@@ -56,10 +59,13 @@ def _series_stripf(x, y, t, v, Dx, Dy, y2, y1, w, lamb, nterm):
 
     return series
 
-def stripf(c0, x, y, t, v, Dx, Dy, y2, y1, w, lamb=0, R=1.0, nterm=100):
+def stripf(c0, x, y, t, v, al, ah, y2, y1, w, Dm=0, lamb=0, R=1.0, nterm=100):
     x = np.atleast_1d(x)
     y = np.atleast_1d(y)
     t = np.atleast_1d(t)
+
+    Dx = al * v + Dm
+    Dy = ah * v + Dm
 
     # apply retardation coefficient to right-hand side
     v = v / R
@@ -83,11 +89,14 @@ def _integrand_stripi(tau, x, y, v, Dx, Dy, y2, y1, lamb):
         (erfc((y1 - y) / (2 * np.sqrt(Dy * tau))) - erfc((y2 - y) / (2 * np.sqrt(Dy * tau))))
     return ig
 
-def stripi(c0, x, y, t, v, Dx, Dy, y2, y1, lamb=0, R=1.0, order=100):
+def stripi(c0, x, y, t, v, al, ah, y2, y1, Dm=0, lamb=0, R=1.0, order=100):
 
     x = np.atleast_1d(x)
     y = np.atleast_1d(y)
     t = np.atleast_1d(t)
+
+    Dx = al * v + Dm
+    Dy = ah * v + Dm
 
     # apply retardation coefficient to right-hand side
     v = v / R
@@ -105,11 +114,14 @@ def _integrand_gauss(tau, x, y, v, Dx, Dy, yc, sigma, lamb):
     denom = (tau**(3 / 2)) * np.sqrt(Dy * tau + 0.5 * sigma**2)
     return num / denom
 
-def gauss(c0, x, y, t, v, Dx, Dy, yc, sigma, lamb=0, R = 1.0, order=100):
+def gauss(c0, x, y, t, v, al, ah, yc, sigma, Dm=0, lamb=0, R = 1.0, order=100):
     
     x = np.atleast_1d(x)
     y = np.atleast_1d(y)
     t = np.atleast_1d(t)
+    
+    Dx = al * v + Dm
+    Dy = ah * v + Dm
     
     # apply retardation coefficient to right-hand side
     v = v / R

@@ -3,12 +3,16 @@ from numba import njit
 from adepy._helpers import _erfc_nb as erfc
 from adepy._helpers import _integrate as integrate
 
-def point3(c0, x, y, z, t, v, n, Dx, Dy, Dz, Q, xc, yc, zc, lamb=0, R=1.0):
+def point3(c0, x, y, z, t, v, n, al, ah, av, Q, xc, yc, zc, Dm=0, lamb=0, R=1.0):
     x = np.atleast_1d(x)
     y = np.atleast_1d(y)
     z = np.atleast_1d(z)
     t = np.atleast_1d(t)
     
+    Dx = al * v + Dm
+    Dy = ah * v + Dm
+    Dz = av * v + Dm
+
     # apply retardation coefficient to right-hand side
     v = v / R
     Dx = Dx / R
@@ -68,12 +72,16 @@ def _series_patchf(x, y, z, t, v, Dx, Dy, Dz, w, h, y1, y2, z1, z2, lamb, nterm)
     
     return series
 
-def patchf(c0, x, y, z, t, v, Dx, Dy, Dz, w, h, y1, y2, z1, z2, lamb=0, R=1.0, nterm=50):
+def patchf(c0, x, y, z, t, v, al, ah, av, w, h, y1, y2, z1, z2, Dm=0, lamb=0, R=1.0, nterm=50):
     
     x = np.atleast_1d(x)
     y = np.atleast_1d(y)
     z = np.atleast_1d(z)
     t = np.atleast_1d(t)
+
+    Dx = al * v + Dm
+    Dy = ah * v + Dm
+    Dz = av * v + Dm
 
     # apply retardation coefficient to right-hand side
     v = v / R
@@ -96,11 +104,15 @@ def _integrand_patchi(tau, x, y, z, v, Dx, Dy, Dz, y1, y2, z1, z2, lamb):
     
     return ig
 
-def patchi(c0, x, y, z, t, v, Dx, Dy, Dz, y1, y2, z1, z2, lamb=0, R=1.0, order=100):
+def patchi(c0, x, y, z, t, v, ah, al, av, y1, y2, z1, z2, Dm=0, lamb=0, R=1.0, order=100):
     x = np.atleast_1d(x)
     y = np.atleast_1d(y)
     z = np.atleast_1d(z)
     t = np.atleast_1d(t)
+
+    Dx = al * v + Dm
+    Dy = ah * v + Dm
+    Dz = av * v + Dm
 
     # apply retardation coefficient to right-hand side
     v = v / R
