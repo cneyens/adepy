@@ -85,7 +85,7 @@ plt.xlabel('Time (d)')
 plt.ylabel('Concentration (mg/L)')
 ```
 
-<img src="doc/_readme/readme_ts.png" width="75%" />
+<img src="doc/_readme/readme_ts.png" width="60%" />
 
 ## References
 [Wexler, E.J., 1992. *Analytical solutions for one-, two-, and three-dimensional solute transport in ground-water systems with uniform flow*, USGS Techniques of Water-Resources Investigations 03-B7, 190 pp., https://doi.org/10.3133/twri03B7](https://doi.org/10.3133/twri03B7)
