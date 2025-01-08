@@ -4,3 +4,4 @@
 /adepy.egg-info
 /.vscode
 *.pyc
+/doc/_readme/readme_figures.py
