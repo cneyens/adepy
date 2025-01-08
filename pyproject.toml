@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "adepy"
 dynamic = ["version"]
-authors = [{ name = "Cas Neyens", email = "cas.neyens@gmail.be" }]
+authors = [{ name = "Cas Neyens", email = "cas.neyens@gmail.com" }]
 description = "Analytical solutions for solute transport in groundwater with Python"
 readme = "README.md"
 license = { file = "LICENSE" }
