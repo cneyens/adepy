@@ -1,6 +1,10 @@
 # adepy
 
-AdePy contains analytical solutions for the advection-dispersion equation (ADE) describing solute transport in groundwater, written in Python. Currently, all solutions shown in [Wexler (1992)](https://doi.org/10.3133/twri03B7) are provided as separate Python functions. These simulate 1D, 2D or 3D solute transport in uniform background flow for a variety of boundary conditions and source geometries. The solute may be subjected to linear sorption and first-order decay. Since all equations are linear, superposition in time and space can be applied to create complex source geometries with time-varying source concentrations. Gauss-Legendre quadrature is used to solve the integrals which require numerical integration.
+AdePy contains analytical solutions for the advection-dispersion equation (ADE) describing solute transport in groundwater, written in Python. 
+
+Currently, all solutions shown in [Wexler (1992)](https://doi.org/10.3133/twri03B7) are provided as separate Python functions. These simulate 1D, 2D or 3D solute transport in uniform background flow for a variety of boundary conditions and source geometries. The solute may be subjected to linear sorption and first-order decay. 
+
+Since all equations are linear, superposition in time and space can be applied to create complex source geometries with time-varying source concentrations. Gauss-Legendre quadrature is used to solve the integrals which require numerical integration.
 
 ## To install
 Download or `git clone` the [GitHub repository](https://github.com/cneyens/adepy) locally. Then install using:
@@ -68,13 +72,13 @@ plt.ylabel('y (m)')
 plt.gca().set_aspect("equal")
 plt.grid()
 ```
-<img src="doc/_readme/readme_contours.png" width="50%" />
+<img src="doc/_readme/readme_contours.png" width="75%" />
 
 ```python
 # Calculate and plot the concentration time series for 5 years at a location downstream ----
 obs = (10, 0, 0)  # x-y-z coordinates of observation point, m
 t = np.linspace(1, 5 * 365, 100)  # output times, d
-cobs = point3(c0, obs[0], obs[1], obs[2], t, v, n, al, ah, av, Q, xc, yc, zc) # simulated concentration, mg/L
+cobs = point3(c0, obs[0], obs[1], obs[2], t, v, n, al, ah, av, Q, xc, yc, zc)
 
 plt.plot(t, cobs)
 plt.xlabel('Time (d)')
