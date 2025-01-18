@@ -1,4 +1,4 @@
-from adepy.threeD import point3, patchi, patchf
+from adepy.uniform import point3, patchi, patchf
 import numpy as np
 
 

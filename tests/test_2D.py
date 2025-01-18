@@ -1,4 +1,4 @@
-from adepy.twoD import point2, stripf, stripi, gauss
+from adepy.uniform import point2, stripf, stripi, gauss
 import numpy as np
 
 

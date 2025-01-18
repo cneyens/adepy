@@ -1,4 +1,4 @@
-from adepy.oneD import finite1, finite3, seminf1, seminf3
+from adepy.uniform import finite1, finite3, seminf1, seminf3
 import numpy as np
 
 # TODO add tests with retardation and decay
