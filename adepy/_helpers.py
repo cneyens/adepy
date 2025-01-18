@@ -9,25 +9,27 @@ addr = get_cython_function_address("scipy.special.cython_special", "__pyx_fuse_1
 functype = ctypes.CFUNCTYPE(ctypes.c_double, ctypes.c_double)
 erfc_fn = functype(addr)
 
-@vectorize('float64(float64)')
+
+@vectorize("float64(float64)")
 def _vec_erfc(x):
     return erfc_fn(x)
+
 
 @njit
 def _erfc_nb(x):
     return _vec_erfc(x)
 
-def _integrate(integrand, t, *args, order=100, method='legendre'):
 
-    if method == 'legendre':
+def _integrate(integrand, t, *args, order=100, method="legendre"):
+    if method == "legendre":
         roots, weights = roots_legendre(order)
 
         def integrate(t, *args):
             roots_adj = roots * (t - 0) / 2 + (0 + t) / 2
-            F = integrand(roots_adj, *args).dot(weights) * (t - 0)/2
+            F = integrand(roots_adj, *args).dot(weights) * (t - 0) / 2
             return F
-    
-    elif method == 'quadrature':
+
+    elif method == "quadrature":
 
         def integrate(t, *args):
             F = quad(integrand, 0, t, args=args.items)
@@ -39,4 +41,3 @@ def _integrate(integrand, t, *args, order=100, method='legendre'):
     integrate_vec = np.vectorize(integrate)
     term = integrate_vec(t, *args)
     return term
-
