@@ -18,7 +18,6 @@ def _integrand_point2(tau, x, y, v, Dx, Dy, xc, yc, lamb):
 
 
 def point2(c0, x, y, t, v, n, al, ah, Qa, xc, yc, Dm=0, lamb=0, R=1.0, order=100):
-    
     x = np.atleast_1d(x)
     y = np.atleast_1d(y)
     t = np.atleast_1d(t)
@@ -90,7 +89,6 @@ def _series_stripf(x, y, t, v, Dx, Dy, y2, y1, w, lamb, nterm):
 
 
 def stripf(c0, x, y, t, v, al, ah, y2, y1, w, Dm=0, lamb=0, R=1.0, nterm=100):
-    
     x = np.atleast_1d(x)
     y = np.atleast_1d(y)
     t = np.atleast_1d(t)
