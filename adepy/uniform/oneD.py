@@ -5,6 +5,7 @@ from adepy._helpers import _erfc_nb as erfc
 
 # @njit
 def _bserie_finite1(betas, x, t, Pe, L, D, lamb):
+    # TODO check for series convergence
     bs = 0.0
 
     if lamb == 0:
@@ -31,6 +32,56 @@ def _bserie_finite1(betas, x, t, Pe, L, D, lamb):
 
 
 def finite1(c0, x, t, v, al, L, Dm=0, lamb=0, R=1.0, nterm=1000):
+    """Compute the 1D concentration field of a dissolved solute from a constant-concentration inlet source in
+    a finite system with uniform background flow.
+
+    Source: [wexler_1992]_ - FINITE (1) algorithm (equations 44-47).
+
+    The one-dimensional advection-dispersion equation is solved for concentration at specified `x` location(s) and
+    output time(s) `t`. A finite system with uniform background flow in the x-direction has a constant-concentration source boundary
+    at the inlet. The solute can be subjected to 1st-order decay. Since the equation is linear, multiple sources can be superimposed
+    in time and space.
+
+    If multiple `x` values are specified, only one `t` can be supplied, and vice versa.
+
+    The solution contains an infinite series summation. A maximum number of terms `nterm` is used. At early times near the source,
+    the algorithm may have trouble converging.
+
+    Parameters
+    ----------
+    c0 : float
+        Source concentration [M/L**3]
+    x : float or 1D of floats
+        x-location(s) to compute output at [L].
+    t : float or 1D of floats
+        Time(s) to compute output at [T].
+    v : float
+        Average linear groundwater flow velocity of the uniform background flow in the x-direction [L/T].
+    al : float
+        Longitudinal dispersivity [L].
+    L : float
+        System length along the x-direction [L].
+    Dm : float, optional
+        Effective molecular diffusion coefficient [L**2/T]; defaults to 0 (no molecular diffusion).
+    lamb : float, optional
+        First-order decay rate [1/T], defaults to 0 (no decay).
+    R : float, optional
+        Retardation coefficient [-]; defaults to 1 (no retardation).
+    nterm : integer, optional
+        Maximum number of terms used in the series summation. Defaults to 1000.
+
+    Returns
+    -------
+    ndarray
+        Numpy array with computed concentrations at location(s) `x` and time(s) `t`.
+
+    References
+    ----------
+    .. [wexler_1992] Wexler, E.J., 1992. Analytical solutions for one-, two-, and three-dimensional
+        solute transport in ground-water systems with uniform flow, USGS Techniques of Water-Resources
+        Investigations 03-B7, 190 pp., https://doi.org/10.3133/twri03B7
+
+    """
     x = np.atleast_1d(x)
     t = np.atleast_1d(t)
 
@@ -89,8 +140,56 @@ def _bserie_finite3(betas, x, t, Pe, L, D, lamb):
 
 
 def finite3(c0, x, t, v, al, L, Dm=0, lamb=0, R=1.0, nterm=1000):
-    # https://github.com/BYL4746/columntracer/blob/main/columntracer.py
+    """Compute the 1D concentration field of a dissolved solute from a Cauchy-type inlet source in
+    a finite system with uniform background flow.
 
+    Source: [wexler_1992]_ - FINITE (3) algorithm (equations 52-54).
+
+    The one-dimensional advection-dispersion equation is solved for concentration at specified `x` location(s) and
+    output time(s) `t`. A finite system with uniform background flow in the x-direction has a Cauchy-type source boundary
+    at the inlet where water with specified concentration `c0` is flowing into the system with the background flow.
+    The solute can be subjected to 1st-order decay. Since the equation is linear, multiple sources can be superimposed
+    in time and space.
+
+    If multiple `x` values are specified, only one `t` can be supplied, and vice versa.
+
+    The solution contains an infinite series summation. A maximum number of terms `nterm` is used.
+
+    Parameters
+    ----------
+    c0 : float
+        Source concentration [M/L**3]
+    x : float or 1D of floats
+        x-location(s) to compute output at [L].
+    t : float or 1D of floats
+        Time(s) to compute output at [T].
+    v : float
+        Average linear groundwater flow velocity of the uniform background flow in the x-direction [L/T].
+    al : float
+        Longitudinal dispersivity [L].
+    L : float
+        System length along the x-direction [L].
+    Dm : float, optional
+        Effective molecular diffusion coefficient [L**2/T]; defaults to 0 (no molecular diffusion).
+    lamb : float, optional
+        First-order decay rate [1/T], defaults to 0 (no decay).
+    R : float, optional
+        Retardation coefficient [-]; defaults to 1 (no retardation).
+    nterm : integer, optional
+        Maximum number of terms used in the series summation. Defaults to 1000.
+
+    Returns
+    -------
+    ndarray
+        Numpy array with computed concentrations at location(s) `x` and time(s) `t`.
+
+    References
+    ----------
+    .. [wexler_1992] Wexler, E.J., 1992. Analytical solutions for one-, two-, and three-dimensional
+        solute transport in ground-water systems with uniform flow, USGS Techniques of Water-Resources
+        Investigations 03-B7, 190 pp., https://doi.org/10.3133/twri03B7
+
+    """
     x = np.atleast_1d(x)
     t = np.atleast_1d(t)
 
@@ -135,6 +234,47 @@ def finite3(c0, x, t, v, al, L, Dm=0, lamb=0, R=1.0, nterm=1000):
 
 
 def seminf1(c0, x, t, v, al, Dm=0, lamb=0, R=1.0):
+    """Compute the 1D concentration field of a dissolved solute from a constant-concentration inlet source in
+    a semi-finite system with uniform background flow.
+
+    Source: [wexler_1992]_ - SEMINF (1) algorithm (equation 60).
+
+    The one-dimensional advection-dispersion equation is solved for concentration at specified `x` location(s) and
+    output time(s) `t`. A semi-finite system with uniform background flow in the x-direction has a constant-concentration
+    source boundary at the inlet. The solute can be subjected to 1st-order decay. Since the equation is linear, multiple sources
+    can be superimposed in time and space.
+
+    Parameters
+    ----------
+    c0 : float
+        Source concentration [M/L**3]
+    x : float or 1D of floats
+        x-location(s) to compute output at [L].
+    t : float or 1D of floats
+        Time(s) to compute output at [T].
+    v : float
+        Average linear groundwater flow velocity of the uniform background flow in the x-direction [L/T].
+    al : float
+        Longitudinal dispersivity [L].
+    Dm : float, optional
+        Effective molecular diffusion coefficient [L**2/T]; defaults to 0 (no molecular diffusion).
+    lamb : float, optional
+        First-order decay rate [1/T], defaults to 0 (no decay).
+    R : float, optional
+        Retardation coefficient [-]; defaults to 1 (no retardation).
+
+    Returns
+    -------
+    ndarray
+        Numpy array with computed concentrations at location(s) `x` and time(s) `t`.
+
+    References
+    ----------
+    .. [wexler_1992] Wexler, E.J., 1992. Analytical solutions for one-, two-, and three-dimensional
+        solute transport in ground-water systems with uniform flow, USGS Techniques of Water-Resources
+        Investigations 03-B7, 190 pp., https://doi.org/10.3133/twri03B7
+
+    """
     x = np.atleast_1d(x)
     t = np.atleast_1d(t)
 
@@ -153,6 +293,50 @@ def seminf1(c0, x, t, v, al, Dm=0, lamb=0, R=1.0):
 
 
 def seminf3(c0, x, t, v, al, Dm=0, lamb=0, R=1.0):
+    """Compute the 1D concentration field of a dissolved solute from a Cauchy-type inlet source in
+    a semi-finite system with uniform background flow.
+
+    Source: [wexler_1992]_ - SEMINF (3) algorithm (equations 67 & 68).
+
+    The one-dimensional advection-dispersion equation is solved for concentration at specified `x` location(s) and
+    output time(s) `t`. A semi-finite system with uniform background flow in the x-direction has a Cauchy-type source boundary
+    at the inlet where water with specified concentration `c0` is flowing into the system with the background flow.
+    The solute can be subjected to 1st-order decay. Since the equation is linear, multiple sources can be superimposed
+    in time and space.
+
+    For very small non-zero values of `lamb`, the solution may suffer from round-off errors.
+
+    Parameters
+    ----------
+    c0 : float
+        Source concentration [M/L**3]
+    x : float or 1D of floats
+        x-location(s) to compute output at [L].
+    t : float or 1D of floats
+        Time(s) to compute output at [T].
+    v : float
+        Average linear groundwater flow velocity of the uniform background flow in the x-direction [L/T].
+    al : float
+        Longitudinal dispersivity [L].
+    Dm : float, optional
+        Effective molecular diffusion coefficient [L**2/T]; defaults to 0 (no molecular diffusion).
+    lamb : float, optional
+        First-order decay rate [1/T], defaults to 0 (no decay).
+    R : float, optional
+        Retardation coefficient [-]; defaults to 1 (no retardation).
+
+    Returns
+    -------
+    ndarray
+        Numpy array with computed concentrations at location(s) `x` and time(s) `t`.
+
+    References
+    ----------
+    .. [wexler_1992] Wexler, E.J., 1992. Analytical solutions for one-, two-, and three-dimensional
+        solute transport in ground-water systems with uniform flow, USGS Techniques of Water-Resources
+        Investigations 03-B7, 190 pp., https://doi.org/10.3133/twri03B7
+
+    """
     x = np.atleast_1d(x)
     t = np.atleast_1d(t)
 

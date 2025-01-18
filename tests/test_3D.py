@@ -69,71 +69,6 @@ def test_point3():
     np.testing.assert_approx_equal(c[0], 0.422971, significant=6)
 
 
-def test_patchi():
-    c = patchi(
-        100,
-        1050,
-        1000,
-        1750,
-        t=3652.5,
-        v=1,
-        al=100,
-        ah=20,
-        av=20,
-        y1=900,
-        y2=2100,
-        z1=1350,
-        z2=1650,
-        lamb=6.78e-5,
-    )  # 17.828021
-
-    np.testing.assert_approx_equal(c[0], 17.828021, significant=6)
-
-
-def test_patchi_shape():
-    x, y = np.meshgrid([1050, 1075, 1080], [1000, 1002, 1004])
-    lamb = np.log(2) / (28 * 365)
-
-    c = patchi(
-        100,
-        x,
-        y,
-        1750,
-        t=3652.5,
-        v=1,
-        al=100,
-        ah=20,
-        av=20,
-        y1=900,
-        y2=2100,
-        z1=1350,
-        z2=1650,
-        lamb=lamb,
-    )
-
-    assert c.shape == (len(x), len(y))
-
-    t = [1000, 2000, 3000]
-    c = patchi(
-        100,
-        1050,
-        1000,
-        1750,
-        t=t,
-        v=1,
-        al=100,
-        ah=20,
-        av=20,
-        y1=900,
-        y2=2100,
-        z1=1350,
-        z2=1650,
-        lamb=lamb,
-    )
-
-    assert c.shape == (len(t),)
-
-
 def test_patchf():
     c = patchf(
         c0=1000,
@@ -197,6 +132,71 @@ def test_patchf_shape():
         z2=1650,
         w=4000,
         h=2000,
+        lamb=lamb,
+    )
+
+    assert c.shape == (len(t),)
+
+
+def test_patchi():
+    c = patchi(
+        100,
+        1050,
+        1000,
+        1750,
+        t=3652.5,
+        v=1,
+        al=100,
+        ah=20,
+        av=20,
+        y1=900,
+        y2=2100,
+        z1=1350,
+        z2=1650,
+        lamb=6.78e-5,
+    )  # 17.828021
+
+    np.testing.assert_approx_equal(c[0], 17.828021, significant=6)
+
+
+def test_patchi_shape():
+    x, y = np.meshgrid([1050, 1075, 1080], [1000, 1002, 1004])
+    lamb = np.log(2) / (28 * 365)
+
+    c = patchi(
+        100,
+        x,
+        y,
+        1750,
+        t=3652.5,
+        v=1,
+        al=100,
+        ah=20,
+        av=20,
+        y1=900,
+        y2=2100,
+        z1=1350,
+        z2=1650,
+        lamb=lamb,
+    )
+
+    assert c.shape == (len(x), len(y))
+
+    t = [1000, 2000, 3000]
+    c = patchi(
+        100,
+        1050,
+        1000,
+        1750,
+        t=t,
+        v=1,
+        al=100,
+        ah=20,
+        av=20,
+        y1=900,
+        y2=2100,
+        z1=1350,
+        z2=1650,
         lamb=lamb,
     )
 

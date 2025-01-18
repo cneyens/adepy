@@ -2,6 +2,7 @@ import numpy as np
 from numba import njit
 from adepy._helpers import _erfc_nb as erfc
 from adepy._helpers import _integrate as integrate
+import warnings
 
 
 @njit
@@ -18,6 +19,66 @@ def _integrand_point2(tau, x, y, v, Dx, Dy, xc, yc, lamb):
 
 
 def point2(c0, x, y, t, v, n, al, ah, Qa, xc, yc, Dm=0, lamb=0, R=1.0, order=100):
+    """Compute the 2D concentration field of a dissolved solute from a continuous point source in an infinite aquifer
+    with uniform background flow.
+
+    Source: [wexler_1992]_ - POINT2 algorithm (equation 76).
+
+    The two-dimensional advection-dispersion equation is solved for concentration at specified `x` and `y` location(s) and
+    output time(s) `t`. A point source is continuously injecting a known concentration c0 at known injection rate Q in the infinite aquifer
+    with specified uniform background flow in the x-direction. It is assumed that the injection rate does not significantly alter the flow
+    field. The solute can be subjected to 1st-order decay. Since the equation is linear, multiple sources can be superimposed in time and space.
+
+    If multiple `x` or `y` values are specified, only one `t` can be supplied, and vice versa.
+
+    A Gauss-Legendre quadrature of order `order` is used to solve the integral. For `x` and `y` values very close to the source location
+    (`xc-yc`), the algorithm might have trouble finding a solution since the integral becomes a form of an exponential integral. See [wexler_1992]_.
+
+    Parameters
+    ----------
+    c0 : float
+        Point source concentration [M/L**3]
+    x : float or 1D or 2D array of floats
+        x-location(s) to compute output at [L].
+    y : float or 1D or 2D array of floats
+        y-location(s) to compute output at [L].
+    t : float or 1D or 2D array of floats
+        Time(s) to compute output at [T].
+    v : float
+        Average linear groundwater flow velocity of the uniform background flow in the x-direction [L/T].
+    n : float
+        Aquifer porosity. Should be between 0 and 1 [-].
+    al : float
+        Longitudinal dispersivity [L].
+    ah : float
+        Horizontal transverse dispersivity [L].
+    Qa : float
+        Volumetric injection rate (positive) of the point source per unit aquifer thickness [L**2/T].
+    xc : float
+        x-coordinate of the point source [L].
+    yc : float
+        y-coordinate of the point source [L].
+    Dm : float, optional
+        Effective molecular diffusion coefficient [L**2/T]; defaults to 0 (no molecular diffusion).
+    lamb : float, optional
+        First-order decay rate [1/T], defaults to 0 (no decay).
+    R : float, optional
+        Retardation coefficient [-]; defaults to 1 (no retardation).
+    order : integer, optional
+        Order of the Gauss-Legendre polynomial used in the integration. Defaults to 100.
+
+    Returns
+    -------
+    ndarray
+        Numpy array with computed concentrations at location(s) `x` and `y` and time(s) `t`.
+
+    References
+    ----------
+    .. [wexler_1992] Wexler, E.J., 1992. Analytical solutions for one-, two-, and three-dimensional
+        solute transport in ground-water systems with uniform flow, USGS Techniques of Water-Resources
+        Investigations 03-B7, 190 pp., https://doi.org/10.3133/twri03B7
+
+    """
     x = np.atleast_1d(x)
     y = np.atleast_1d(y)
     t = np.atleast_1d(t)
@@ -62,6 +123,7 @@ def _series_stripf(x, y, t, v, Dx, Dy, y2, y1, w, lamb, nterm):
     else:
         series = np.zeros_like(x, dtype=np.float64)
 
+    subterm = 0.0
     for n in range(nterm):
         eta = n * np.pi / w
         beta = np.sqrt(v**2 + 4 * Dx * (eta**2 * Dy + lamb))
@@ -85,10 +147,82 @@ def _series_stripf(x, y, t, v, Dx, Dy, y2, y1, w, lamb, nterm):
         add = np.where(np.isnan(add), 0.0, add)
         series += add
 
+        # if last 10 terms sum to < 1e-12, exit loop
+        # checked every 10 terms
+        subterm += add
+        if (n + 1) % 10 == 0:
+            if np.all(abs(subterm) < 1e-12):
+                break
+            else:
+                subterm = 0.0
+
+    if n == (nterm - 1):
+        warnings.warn(f"Series did not converge in {nterm} summations")
+
     return series
 
 
-def stripf(c0, x, y, t, v, al, ah, y2, y1, w, Dm=0, lamb=0, R=1.0, nterm=100):
+def stripf(c0, x, y, t, v, al, ah, y1, y2, w, Dm=0, lamb=0, R=1.0, nterm=100):
+    """Compute the 2D concentration field of a dissolved solute from a finite-width source in an finite-width aquifer
+    with uniform background flow.
+
+    Source: [wexler_1992]_ - STRIPF algorithm (equation 85).
+
+    The two-dimensional advection-dispersion equation is solved for concentration at specified `x` and `y` location(s) and
+    output time(s) `t`. The source is located at `x=0` and has a finite width (along the y-axis), i.e. a "strip" source.
+    The concentration at the source location remains constant. The aquifer has a finite width (y-extent) and a specified uniform background
+    flow in the x-direction. The solute can be subjected to 1st-order decay. Since the equation is linear, multiple sources can be superimposed
+    in time and space.
+
+    If multiple `x` or `y` values are specified, only one `t` can be supplied, and vice versa.
+    If both `lambda` and the horizontal transverse dispersion coefficient are zero, no solution can be found.
+
+    The solution consists of an infinite summation. A maximum of `nterm` terms are used in the algorithm.
+    If the solution oscillates, try increasing `nterm`. For small values of `x`, the solution may have trouble converging.
+
+    Parameters
+    ----------
+    c0 : float
+        Source concentration [M/L**3]
+    x : float or 1D or 2D array of floats
+        x-location(s) to compute output at [L].
+    y : float or 1D or 2D array of floats
+        y-location(s) to compute output at [L].
+    t : float or 1D or 2D array of floats
+        Time(s) to compute output at [T].
+    v : float
+        Average linear groundwater flow velocity of the uniform background flow in the x-direction [L/T].
+    al : float
+        Longitudinal dispersivity [L].
+    ah : float
+        Horizontal transverse dispersivity [L].
+    y1 : float
+        Lower y-coordinate of the solute source at `x=0` [L].
+    y2 : float
+        Upper y-coordinate of the solute source at `x=0` [L].
+    w : float
+        Aquifer width [L].
+    Dm : float, optional
+        Effective molecular diffusion coefficient [L**2/T]; defaults to 0 (no molecular diffusion).
+    lamb : float, optional
+        First-order decay rate [1/T], defaults to 0 (no decay).
+    R : float, optional
+        Retardation coefficient [-]; defaults to 1 (no retardation).
+    nterm : integer, optional
+        Maximum number of terms used in the series summation. Defaults to 100.
+
+    Returns
+    -------
+    ndarray
+        Numpy array with computed concentrations at location(s) `x` and `y` and time(s) `t`.
+
+    References
+    ----------
+    .. [wexler_1992] Wexler, E.J., 1992. Analytical solutions for one-, two-, and three-dimensional
+        solute transport in ground-water systems with uniform flow, USGS Techniques of Water-Resources
+        Investigations 03-B7, 190 pp., https://doi.org/10.3133/twri03B7
+
+    """
     x = np.atleast_1d(x)
     y = np.atleast_1d(y)
     t = np.atleast_1d(t)
@@ -116,19 +250,77 @@ def stripf(c0, x, y, t, v, al, ah, y2, y1, w, Dm=0, lamb=0, R=1.0, nterm=100):
 
 @njit
 def _integrand_stripi(tau, x, y, v, Dx, Dy, y2, y1, lamb):
-    # error in Wexler, 1992, eq. 91a: denominator of last erfc term should be multiplied by 2. Correct in code below.
+    # error in Wexler, 1992, eq. 91a: denominator of last erfc term should be multiplied by 2.
+    # here, 91b is used
     ig = (
-        (tau ** (-3 / 2))
-        * np.exp(-(v**2 / (4 * Dx) + lamb) * tau - x**2 / (4 * Dx * tau))
+        (1 / (tau**3))
+        * np.exp(-(v**2 / (4 * Dx) + lamb) * tau**4 - x**2 / (4 * Dx * tau**4))
         * (
-            erfc((y1 - y) / (2 * np.sqrt(Dy * tau)))
-            - erfc((y2 - y) / (2 * np.sqrt(Dy * tau)))
+            erfc((y1 - y) / (2 * tau**2 * np.sqrt(Dy)))
+            - erfc((y2 - y) / (2 * tau**2 * np.sqrt(Dy)))
         )
     )
     return ig
 
 
-def stripi(c0, x, y, t, v, al, ah, y2, y1, Dm=0, lamb=0, R=1.0, order=100):
+def stripi(c0, x, y, t, v, al, ah, y1, y2, Dm=0, lamb=0, R=1.0, order=100):
+    """Compute the 2D concentration field of a dissolved solute from a finite-width source in an semi-infinite aquifer
+    with uniform background flow.
+
+    Source: [wexler_1992]_ - STRIPI algorithm (equation 91b).
+
+    The two-dimensional advection-dispersion equation is solved for concentration at specified `x` and `y` location(s) and
+    output time(s) `t`. The source is located at `x=0` and has a finite width (along the y-axis), i.e. a "strip" source.
+    The concentration at the source location remains constant. The aquifer has a infinite width (y-extent) and a specified uniform background
+    flow in the x-direction. The solute can be subjected to 1st-order decay. Since the equation is linear, multiple sources can be superimposed
+    in time and space.
+
+    If multiple `x` or `y` values are specified, only one `t` can be supplied, and vice versa.
+
+    A Gauss-Legendre quadrature of order `order` is used to solve the integral. For very small `x` values at large times `t`,
+    round-off errors may occur.
+
+    Parameters
+    ----------
+    c0 : float
+        Source concentration [M/L**3]
+    x : float or 1D or 2D array of floats
+        x-location(s) to compute output at [L].
+    y : float or 1D or 2D array of floats
+        y-location(s) to compute output at [L].
+    t : float or 1D or 2D array of floats
+        Time(s) to compute output at [T].
+    v : float
+        Average linear groundwater flow velocity of the uniform background flow in the x-direction [L/T].
+    al : float
+        Longitudinal dispersivity [L].
+    ah : float
+        Horizontal transverse dispersivity [L].
+    y1 : float
+        Lower y-coordinate of the solute source at `x=0` [L].
+    y2 : float
+        Upper y-coordinate of the solute source at `x=0` [L].
+    Dm : float, optional
+        Effective molecular diffusion coefficient [L**2/T]; defaults to 0 (no molecular diffusion).
+    lamb : float, optional
+        First-order decay rate [1/T], defaults to 0 (no decay).
+    R : float, optional
+        Retardation coefficient [-]; defaults to 1 (no retardation).
+    order : integer, optional
+        Order of the Gauss-Legendre polynomial used in the integration. Defaults to 100.
+
+    Returns
+    -------
+    ndarray
+        Numpy array with computed concentrations at location(s) `x` and `y` and time(s) `t`.
+
+    References
+    ----------
+    .. [wexler_1992] Wexler, E.J., 1992. Analytical solutions for one-, two-, and three-dimensional
+        solute transport in ground-water systems with uniform flow, USGS Techniques of Water-Resources
+        Investigations 03-B7, 190 pp., https://doi.org/10.3133/twri03B7
+
+    """
     x = np.atleast_1d(x)
     y = np.atleast_1d(y)
     t = np.atleast_1d(t)
@@ -143,7 +335,7 @@ def stripi(c0, x, y, t, v, al, ah, y2, y1, Dm=0, lamb=0, R=1.0, order=100):
 
     term = integrate(
         _integrand_stripi,
-        t,
+        t ** (1 / 4),
         x,
         y,
         v,
@@ -155,23 +347,78 @@ def stripi(c0, x, y, t, v, al, ah, y2, y1, Dm=0, lamb=0, R=1.0, order=100):
         order=order,
         method="legendre",
     )
-    term0 = x / (4 * np.sqrt(np.pi * Dx)) * np.exp(v * x / (2 * Dx))
+    term0 = x / (np.sqrt(np.pi * Dx)) * np.exp(v * x / (2 * Dx))
 
     return c0 * term0 * term
 
 
 @njit
 def _integrand_gauss(tau, x, y, v, Dx, Dy, yc, sigma, lamb):
-    num = np.exp(
-        -(v**2 / (4 * Dx) + lamb) * tau
-        - x**2 / (4 * Dx * tau)
-        - ((y - yc) ** 2) / (4 * (Dy * tau + 0.5 * sigma**2))
-    )
-    denom = (tau ** (3 / 2)) * np.sqrt(Dy * tau + 0.5 * sigma**2)
-    return num / denom
+    beta = v**2 / (4 * Dx) + lamb
+    gamma = Dy * tau**4 + sigma**2 / 2
+    ig = np.exp(
+        -beta * tau**4 - x**2 / (4 * Dx * tau**4) - (y - yc) ** 2 / (4 * gamma)
+    ) / (tau**3 * np.sqrt(gamma))
+
+    return ig
 
 
 def gauss(c0, x, y, t, v, al, ah, yc, sigma, Dm=0, lamb=0, R=1.0, order=100):
+    """Compute the 2D concentration field of a dissolved solute from a Gaussian source in an semi-infinite aquifer
+    with uniform background flow.
+
+    Source: [wexler_1992]_ - GAUSS algorithm (equation 98).
+
+    The two-dimensional advection-dispersion equation is solved for concentration `x` and `y` location(s) and
+    output time(s) `t`. The source is located at `x=0` and has a Gaussian concentration distribution along the y-axis.
+    The concentration at the source location remains constant. The aquifer has a infinite width (y-extent) and a specified uniform background
+    flow in the x-direction. The solute can be subjected to 1st-order decay. Since the equation is linear, multiple sources can be superimposed
+    in time and space.
+
+    If multiple `x` or `y` values are specified, only one `t` can be supplied, and vice versa.
+
+    A Gauss-Legendre quadrature of order `order` is used to solve the integral.
+
+    Parameters
+    ----------
+    c0 : float
+        Maximum concentration at the center of the Gaussian solute source (`yc`) [M/L**3]
+    x : float or 1D or 2D array of floats
+        x-location(s) to compute output at [L].
+    y : float or 1D or 2D array of floats
+        y-location(s) to compute output at [L].
+    t : float or 1D or 2D array of floats
+        Time(s) to compute output at [T].
+    v : float
+        Average linear groundwater flow velocity of the uniform background flow in the x-direction [L/T].
+    al : float
+        Longitudinal dispersivity [L].
+    ah : float
+        Horizontal transverse dispersivity [L].
+    yc : float
+        Center y-coordinate of the Gaussian solute source at `x=0` [L].
+    sigma : float
+        Standard deviation of the geometry of the Gaussian solute source at `x=0` [L].
+    Dm : float, optional
+        Effective molecular diffusion coefficient [L**2/T]; defaults to 0 (no molecular diffusion).
+    lamb : float, optional
+        First-order decay rate [1/T], defaults to 0 (no decay).
+    R : float, optional
+        Retardation coefficient [-]; defaults to 1 (no retardation).
+    order : integer, optional
+        Order of the Gauss-Legendre polynomial used in the integration. Defaults to 100.
+
+    Returns
+    -------
+    ndarray
+        Numpy array with computed concentrations at location(s) `x` and `y` and time(s) `t`.
+
+    References
+    ----------
+    .. [wexler_1992] Wexler, E.J., 1992. Analytical solutions for one-, two-, and three-dimensional
+        solute transport in ground-water systems with uniform flow, USGS Techniques of Water-Resources
+        Investigations 03-B7, 190 pp., https://doi.org/10.3133/twri03B7
+    """
     x = np.atleast_1d(x)
     y = np.atleast_1d(y)
     t = np.atleast_1d(t)
@@ -186,7 +433,7 @@ def gauss(c0, x, y, t, v, al, ah, yc, sigma, Dm=0, lamb=0, R=1.0, order=100):
 
     term = integrate(
         _integrand_gauss,
-        t,
+        t ** (1 / 4),
         x,
         y,
         v,
@@ -198,6 +445,6 @@ def gauss(c0, x, y, t, v, al, ah, yc, sigma, Dm=0, lamb=0, R=1.0, order=100):
         order=order,
         method="legendre",
     )
-    term0 = x * sigma / np.sqrt(8 * np.pi * Dx) * np.exp(v * x / (2 * Dx))
+    term0 = 2 * x * sigma / np.sqrt(2 * np.pi * Dx) * np.exp(v * x / (2 * Dx))
 
     return c0 * term0 * term

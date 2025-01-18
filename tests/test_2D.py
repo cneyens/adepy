@@ -59,24 +59,23 @@ def test_stripf_shape():
         v=0.1,
         al=1,
         ah=1,
-        y2=15,
         y1=9,
+        y2=15,
         w=20,
     )
 
     assert c.shape == (len(x), len(y))
 
     t = [100, 200, 300]
-    c = stripf(c0=1.0, x=10, y=11, t=t, v=0.1, al=1, ah=1, y2=15, y1=9, w=20, lamb=0.05)
+    c = stripf(c0=1.0, x=10, y=11, t=t, v=0.1, al=1, ah=1, y1=9, y2=15, w=20, lamb=0.05)
 
     assert c.shape == (len(t),)
 
 
 def test_stripf():
     c = stripf(
-        1000, [750, 1350], [100, 500], 1500, 1, 200, 60, 2000, 400, 3000
+        1000, [750, 1350], [100, 500], 1500, 1, 200, 60, 400, 2000, 3000
     )  # 144.48110, 423.82109
-
     np.testing.assert_approx_equal(c[0], 144.48110)
     np.testing.assert_approx_equal(c[1], 423.82109)
 
@@ -92,14 +91,14 @@ def test_stripi_shape():
         v=0.1,
         al=1,
         ah=1,
-        y2=15,
         y1=9,
+        y2=15,
     )
 
     assert c.shape == (len(x), len(y))
 
     t = [100, 200, 300]
-    c = stripi(c0=1.0, x=10, y=11, t=t, v=0.1, al=1, ah=1, y2=15, y1=9, lamb=0.05)
+    c = stripi(c0=1.0, x=10, y=11, t=t, v=0.1, al=1, ah=1, y1=9, y2=15, lamb=0.05)
 
     assert c.shape == (len(t),)
 
@@ -113,8 +112,8 @@ def test_stripi():
         v=1.42,
         al=100 / 1.42,
         ah=20 / 1.42,
-        y2=865,
         y1=635,
+        y2=865,
     )  # 8.85856
 
     np.testing.assert_approx_equal(c[0], 8.85856, significant=5)

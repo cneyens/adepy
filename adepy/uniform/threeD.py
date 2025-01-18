@@ -2,9 +2,75 @@ import numpy as np
 from numba import njit
 from adepy._helpers import _erfc_nb as erfc
 from adepy._helpers import _integrate as integrate
+import warnings
 
 
 def point3(c0, x, y, z, t, v, n, al, ah, av, Q, xc, yc, zc, Dm=0, lamb=0, R=1.0):
+    """Compute the 3D concentration field of a dissolved solute from a continuous point source in an infinite aquifer
+    with uniform background flow.
+
+    Source: [wexler_1992]_ - POINT3 algorithm (equation 105).
+
+    The three-dimensional advection-dispersion equation is solved for concentration at specified `x`, `y` and `z` location(s) and
+    output time(s) `t`. A point source is continuously injecting a known concentration c0 at known injection rate Q in the infinite aquifer
+    with specified uniform background flow in the x-direction. It is assumed that the injection rate does not significantly alter the flow
+    field. The solute can be subjected to 1st-order decay. Since the equation is linear, multiple sources can be superimposed in time and space.
+
+    If multiple `x`, `y` or `z` values are specified, only one `t` can be supplied, and vice versa.
+
+    For `x`, `y` and `z` values very close to the source location (`xc-yc-zc`), the algorithm might have trouble finding a solution.
+    At the source location, the solution is undefined. Simulated concentrations near the source may exceed `c0` for certain parameter combinations.
+    See [wexler_1992]_.
+
+    Parameters
+    ----------
+    c0 : float
+        Point source concentration [M/L**3]
+    x : float or 1D or 2D array of floats
+        x-location(s) to compute output at [L].
+    y : float or 1D or 2D array of floats
+        y-location(s) to compute output at [L].
+    z : float or 1D or 2D array of floats
+        z-location(s) to compute output at [L].
+    t : float or 1D or 2D array of floats
+        Time(s) to compute output at [T].
+    v : float
+        Average linear groundwater flow velocity of the uniform background flow in the x-direction [L/T].
+    n : float
+        Aquifer porosity. Should be between 0 and 1 [-].
+    al : float
+        Longitudinal dispersivity [L].
+    ah : float
+        Horizontal transverse dispersivity [L].
+    av : float
+        Vertical transverse dispersivity [L].
+    Q : float
+        Volumetric injection rate (positive) of the point source [L**3/T].
+    xc : float
+        x-coordinate of the point source [L].
+    yc : float
+        y-coordinate of the point source [L].
+    zc : float
+        z-coordinate of the point source [L].
+    Dm : float, optional
+        Effective molecular diffusion coefficient [L**2/T]; defaults to 0 (no molecular diffusion).
+    lamb : float, optional
+        First-order decay rate [1/T], defaults to 0 (no decay).
+    R : float, optional
+        Retardation coefficient [-]; defaults to 1 (no retardation).
+
+    Returns
+    -------
+    ndarray
+        Numpy array with computed concentrations at location(s) `x`, `y` and `z` and time(s) `t`.
+
+    References
+    ----------
+    .. [wexler_1992] Wexler, E.J., 1992. Analytical solutions for one-, two-, and three-dimensional
+        solute transport in ground-water systems with uniform flow, USGS Techniques of Water-Resources
+        Investigations 03-B7, 190 pp., https://doi.org/10.3133/twri03B7
+
+    """
     x = np.atleast_1d(x)
     y = np.atleast_1d(y)
     z = np.atleast_1d(z)
@@ -41,6 +107,8 @@ def _series_patchf(x, y, z, t, v, Dx, Dy, Dz, w, h, y1, y2, z1, z2, lamb, nterm)
     else:
         series = np.zeros_like(x, dtype=np.float64)
 
+    subterm_outer = 0.0
+    outer_close_contour = 0
     for m in range(nterm):
         zeta = m * np.pi / h
 
@@ -49,6 +117,8 @@ def _series_patchf(x, y, z, t, v, Dx, Dy, Dz, w, h, y1, y2, z1, z2, lamb, nterm)
         else:
             Om = (np.sin(zeta * z2) - np.sin(zeta * z1)) / (m * np.pi)
 
+        subterm_inner = 0.0
+        inner_close = False
         for n in range(nterm):
             eta = n * np.pi / w
             beta = np.sqrt(v**2 + 4 * Dx * (Dy * eta**2 + Dz * zeta**2 + lamb))
@@ -77,12 +147,111 @@ def _series_patchf(x, y, z, t, v, Dx, Dy, Dz, w, h, y1, y2, z1, z2, lamb, nterm)
             add = np.where(np.isnan(add), 0.0, add)
             series += add
 
+            # if last 10 inner terms sum to < 1e-12, exit inner loop
+            # checked every 10 inner terms
+            subterm_inner += add
+            if (n + 1) % 10 == 0:
+                if np.all(abs(subterm_inner) < 1e-12):
+                    inner_close = True
+                    break
+                else:
+                    subterm_inner = 0.0
+
+        # if summation difference < 1e-12 for 10 subsequent outer iterations
+        # and inner summation is closed every time,
+        # then exit outer loop
+        if m > 0 and inner_close:  # at least 1 outer iteration should have completed
+            if np.all(abs(subterm_outer - series) < 1e-12):
+                outer_close_contour += 1
+            else:
+                outer_close_contour = 0
+        else:
+            outer_close_contour = 0
+
+        if outer_close_contour == 10:
+            break
+
+        subterm_outer = series.copy()
+
+    if m == (nterm - 1):
+        warnings.warn(f"Series did not converge in {nterm} outer summations")
+
     return series
 
 
 def patchf(
-    c0, x, y, z, t, v, al, ah, av, w, h, y1, y2, z1, z2, Dm=0, lamb=0, R=1.0, nterm=50
+    c0, x, y, z, t, v, al, ah, av, w, h, y1, y2, z1, z2, Dm=0, lamb=0, R=1.0, nterm=100
 ):
+    """Compute the 3D concentration field of a dissolved solute from a finite-width and height source in an finite-width
+    and height aquifer with uniform background flow.
+
+    Source: [wexler_1992]_ - PATCHF algorithm (equation 114).
+
+    The three-dimensional advection-dispersion equation is solved for concentration at specified `x`, `y` and `z` location(s) and
+    output time(s) `t`. The source is located at `x=0` and has a finite width (along the y-axis) and finite height (along the z-axis),
+    i.e. a "patch" source. The concentration at the source location remains constant. The aquifer has a finite width (y-extent),
+    finite height (z-extent) and a specified uniform background flow in the x-direction. The solute can be subjected to 1st-order decay.
+    Since the equation is linear, multiple sources can be superimposed in time and space.
+
+    If multiple `x`, `y` or `z` values are specified, only one `t` can be supplied, and vice versa.
+    If `lambda` and the transverse dispersion coefficients are all zero, no solution can be found.
+
+    The solution consists of an infinite summation. A maximum of `nterm` terms are used in the algorithm.
+    If the solution oscillates, try increasing `nterm`. For small values of `x and `t`, the solution may have trouble converging.
+
+    Parameters
+    ----------
+    c0 : float
+        Source concentration [M/L**3]
+    x : float or 1D or 2D array of floats
+        x-location(s) to compute output at [L].
+    y : float or 1D or 2D array of floats
+        y-location(s) to compute output at [L].
+    z : float or 1D or 2D array of floats
+        z-location(s) to compute output at [L].
+    t : float or 1D or 2D array of floats
+        Time(s) to compute output at [T].
+    v : float
+        Average linear groundwater flow velocity of the uniform background flow in the x-direction [L/T].
+    al : float
+        Longitudinal dispersivity [L].
+    ah : float
+        Horizontal transverse dispersivity [L].
+    av : float
+        Vertical transverse dispersivity [L].
+    w : float
+        Aquifer width [L].
+    h : float
+        Aquifer height [L].
+    y1 : float
+        Lower y-coordinate of the solute source at `x=0` [L].
+    y2 : float
+        Upper y-coordinate of the solute source at `x=0` [L].
+    z1 : float
+        Lower z-coordinate of the solute source at `x=0` [L].
+    z2 : float
+        Upper z-coordinate of the solute source at `x=0` [L].
+    Dm : float, optional
+        Effective molecular diffusion coefficient [L**2/T]; defaults to 0 (no molecular diffusion).
+    lamb : float, optional
+        First-order decay rate [1/T], defaults to 0 (no decay).
+    R : float, optional
+        Retardation coefficient [-]; defaults to 1 (no retardation).
+    nterm : integer, optional
+        Maximum number of terms used in the series summation. Defaults to 100.
+
+    Returns
+    -------
+    ndarray
+        Numpy array with computed concentrations at location(s) `x`, `y` and `z` and time(s) `t`.
+
+    References
+    ----------
+    .. [wexler_1992] Wexler, E.J., 1992. Analytical solutions for one-, two-, and three-dimensional
+        solute transport in ground-water systems with uniform flow, USGS Techniques of Water-Resources
+        Investigations 03-B7, 190 pp., https://doi.org/10.3133/twri03B7
+
+    """
     x = np.atleast_1d(x)
     y = np.atleast_1d(y)
     z = np.atleast_1d(z)
@@ -102,6 +271,9 @@ def patchf(
         raise ValueError(
             "If multiple values for t are specified, only one x, y and z value are allowed"
         )
+
+    if lamb == 0 and Dy == 0 and Dz == 0:
+        raise ValueError("One of Dy, Dz or lamb should be non-zero")
 
     series = _series_patchf(
         x, y, z, t, v, Dx, Dy, Dz, w, h, y1, y2, z1, z2, lamb, nterm
@@ -132,6 +304,71 @@ def _integrand_patchi(tau, x, y, z, v, Dx, Dy, Dz, y1, y2, z1, z2, lamb):
 def patchi(
     c0, x, y, z, t, v, ah, al, av, y1, y2, z1, z2, Dm=0, lamb=0, R=1.0, order=100
 ):
+    """Compute the 3D concentration field of a dissolved solute from a finite-width and height source in an semi-infinite
+    aquifer with uniform background flow.
+
+    Source: [wexler_1992]_ - PATCHI algorithm (equation 121b).
+
+    The three-dimensional advection-dispersion equation is solved for concentration at specified `x`, `y` and `z` location(s) and
+    output time(s) `t`. The source is located at `x=0` and has a finite width (along the y-axis) and finite height (along the z-axis),
+    i.e. a "patch" source. The concentration at the source location remains constant. The aquifer has a infinite width (y-extent),
+    infinite height (z-extent) and a specified uniform background flow in the x-direction. The solute can be subjected to 1st-order decay.
+    Since the equation is linear, multiple sources can be superimposed in time and space.
+
+    If multiple `x`, `y` or `z` values are specified, only one `t` can be supplied, and vice versa.
+
+    A Gauss-Legendre quadrature of order `order` is used to solve the integral. For very small `x` values at large times `t`,
+    round-off errors may occur.
+
+    Parameters
+    ----------
+    c0 : float
+        Source concentration [M/L**3]
+    x : float or 1D or 2D array of floats
+        x-location(s) to compute output at [L].
+    y : float or 1D or 2D array of floats
+        y-location(s) to compute output at [L].
+    z : float or 1D or 2D array of floats
+        z-location(s) to compute output at [L].
+    t : float or 1D or 2D array of floats
+        Time(s) to compute output at [T].
+    v : float
+        Average linear groundwater flow velocity of the uniform background flow in the x-direction [L/T].
+    al : float
+        Longitudinal dispersivity [L].
+    ah : float
+        Horizontal transverse dispersivity [L].
+    av : float
+        Vertical transverse dispersivity [L].
+    y1 : float
+        Lower y-coordinate of the solute source at `x=0` [L].
+    y2 : float
+        Upper y-coordinate of the solute source at `x=0` [L].
+    z1 : float
+        Lower z-coordinate of the solute source at `x=0` [L].
+    z2 : float
+        Upper z-coordinate of the solute source at `x=0` [L].
+    Dm : float, optional
+        Effective molecular diffusion coefficient [L**2/T]; defaults to 0 (no molecular diffusion).
+    lamb : float, optional
+        First-order decay rate [1/T], defaults to 0 (no decay).
+    R : float, optional
+        Retardation coefficient [-]; defaults to 1 (no retardation).
+    order : integer, optional
+        Order of the Gauss-Legendre polynomial used in the integration. Defaults to 100.
+
+    Returns
+    -------
+    ndarray
+        Numpy array with computed concentrations at location(s) `x`, `y` and `z` and time(s) `t`.
+
+    References
+    ----------
+    .. [wexler_1992] Wexler, E.J., 1992. Analytical solutions for one-, two-, and three-dimensional
+        solute transport in ground-water systems with uniform flow, USGS Techniques of Water-Resources
+        Investigations 03-B7, 190 pp., https://doi.org/10.3133/twri03B7
+
+    """
     x = np.atleast_1d(x)
     y = np.atleast_1d(y)
     z = np.atleast_1d(z)
