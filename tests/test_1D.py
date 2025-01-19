@@ -11,6 +11,11 @@ def test_finite1():
     c = finite1(1, 2.5, 5, v=0.6, al=1, L=12, R=8.31)  # 0.0105
     np.testing.assert_approx_equal(c[0], 0.01054, significant=4)
 
+    L = 12
+    c = finite1(1, [L, L + 0.5], 5, 0.6, 1, L)
+    assert np.isnan(c[1])
+    assert ~np.isnan(c[0])
+
 
 def test_finite1_shape():
     x = [5.0, 6.0, 7.0]
@@ -27,6 +32,11 @@ def test_finite3():
     np.testing.assert_array_almost_equal(
         c, np.array([0.55821, 0.17878, 0.02525]), decimal=5
     )
+
+    L = 12
+    c = finite3(1, [L, L + 0.5], 5, 0.6, 1, L)
+    assert np.isnan(c[1])
+    assert ~np.isnan(c[0])
 
 
 def test_finite3_shape():

@@ -88,6 +88,7 @@ def finite1(c0, x, t, v, al, L, Dm=0, lamb=0, R=1.0, nterm=1000):
     if len(x) > 1 and len(t) > 1:
         raise ValueError("Either x or t should have length 1")
 
+    x[x > L] = np.nan  # set values outside finite column to NA
     D = al * v + Dm
 
     # apply retardation coefficient to right-hand side
@@ -196,6 +197,7 @@ def finite3(c0, x, t, v, al, L, Dm=0, lamb=0, R=1.0, nterm=1000):
     if len(x) > 1 and len(t) > 1:
         raise ValueError("Either x or t should have length 1")
 
+    x[x > L] = np.nan  # set values outside finite column to NA
     D = al * v + Dm
 
     # apply retardation coefficient to right-hand side
