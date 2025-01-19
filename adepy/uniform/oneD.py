@@ -82,7 +82,7 @@ def finite1(c0, x, t, v, al, L, Dm=0, lamb=0, R=1.0, nterm=1000):
         Investigations 03-B7, 190 pp., https://doi.org/10.3133/twri03B7
 
     """
-    x = np.atleast_1d(x)
+    x = np.atleast_1d(x).astype(np.float64)
     t = np.atleast_1d(t)
 
     if len(x) > 1 and len(t) > 1:
@@ -191,7 +191,7 @@ def finite3(c0, x, t, v, al, L, Dm=0, lamb=0, R=1.0, nterm=1000):
         Investigations 03-B7, 190 pp., https://doi.org/10.3133/twri03B7
 
     """
-    x = np.atleast_1d(x)
+    x = np.atleast_1d(x).astype(np.float64)
     t = np.atleast_1d(t)
 
     if len(x) > 1 and len(t) > 1:

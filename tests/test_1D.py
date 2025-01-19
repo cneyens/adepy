@@ -12,7 +12,7 @@ def test_finite1():
     np.testing.assert_approx_equal(c[0], 0.01054, significant=4)
 
     L = 12
-    c = finite1(1, [L, L + 0.5], 5, 0.6, 1, L)
+    c = finite1(1, [L, L + 1], 5, 0.6, 1, L)
     assert np.isnan(c[1])
     assert ~np.isnan(c[0])
 
@@ -34,7 +34,7 @@ def test_finite3():
     )
 
     L = 12
-    c = finite3(1, [L, L + 0.5], 5, 0.6, 1, L)
+    c = finite3(1, [L, L + 1], 5, 0.6, 1, L)
     assert np.isnan(c[1])
     assert ~np.isnan(c[0])
 

@@ -2,7 +2,6 @@ import numpy as np
 from numba import njit
 from adepy._helpers import _erfc_nb as erfc
 from adepy._helpers import _integrate as integrate
-import warnings
 
 
 def point3(c0, x, y, z, t, v, n, al, ah, av, Q, xc, yc, zc, Dm=0, lamb=0, R=1.0):
@@ -149,6 +148,7 @@ def _series_patchf(x, y, z, t, v, Dx, Dy, Dz, w, h, y1, y2, z1, z2, lamb, nterm)
 
             # if last 10 inner terms sum to < 1e-12, exit inner loop
             # checked every 10 inner terms
+            # TODO check this
             subterm_inner += add
             if (n + 1) % 10 == 0:
                 if np.all(abs(subterm_inner) < 1e-12):
@@ -173,8 +173,8 @@ def _series_patchf(x, y, z, t, v, Dx, Dy, Dz, w, h, y1, y2, z1, z2, lamb, nterm)
 
         subterm_outer = series.copy()
 
-    if m == (nterm - 1):
-        warnings.warn(f"Series did not converge in {nterm} outer summations")
+    # if m == (nterm - 1):
+    #     warnings.warn(f"Series did not converge in {nterm} outer summations")
 
     return series
 

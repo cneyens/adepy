@@ -2,7 +2,6 @@ import numpy as np
 from numba import njit
 from adepy._helpers import _erfc_nb as erfc
 from adepy._helpers import _integrate as integrate
-import warnings
 
 
 @njit
@@ -149,6 +148,7 @@ def _series_stripf(x, y, t, v, Dx, Dy, y2, y1, w, lamb, nterm):
 
         # if last 10 terms sum to < 1e-12, exit loop
         # checked every 10 terms
+        # TODO check this
         subterm += add
         if (n + 1) % 10 == 0:
             if np.all(abs(subterm) < 1e-12):
@@ -156,8 +156,8 @@ def _series_stripf(x, y, t, v, Dx, Dy, y2, y1, w, lamb, nterm):
             else:
                 subterm = 0.0
 
-    if n == (nterm - 1):
-        warnings.warn(f"Series did not converge in {nterm} summations")
+    # if n == (nterm - 1):
+    #     warnings.warn(f"Series did not converge in {nterm} summations")
 
     return series
 
