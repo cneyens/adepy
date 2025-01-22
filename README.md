@@ -4,7 +4,7 @@ AdePy contains analytical solutions for the advection-dispersion equation (ADE) 
 
 Currently, all solutions shown in [Wexler (1992)](https://doi.org/10.3133/twri03B7) are provided as separate Python functions. These simulate 1D, 2D or 3D solute transport in uniform background flow for a variety of boundary conditions and source geometries. The solute may be subjected to linear sorption and first-order decay. 
 
-Since all equations are linear, superposition in time and space can be applied to create complex source geometries with time-varying source concentrations. Gauss-Legendre quadrature is used to solve the integrals which require numerical integration.
+Since all equations are linear, superposition in time and space can be applied to create complex source geometries with time-varying source concentrations. Gauss-Legendre quadrature is used to solve the integrals which require numerical integration. Sequential or parallel first-order parent-daughter chain reactions are supported using the method described by [Sun & Clement (1999)](https://doi.org/10.1023/A:1006507514019).
 
 ## To install
 Download or `git clone` the [GitHub repository](https://github.com/cneyens/adepy) locally. Then install using:
@@ -91,3 +91,5 @@ plt.ylabel('Concentration (mg/L)')
 
 ## References
 [Wexler, E.J., 1992. *Analytical solutions for one-, two-, and three-dimensional solute transport in ground-water systems with uniform flow*, USGS Techniques of Water-Resources Investigations 03-B7, 190 pp., https://doi.org/10.3133/twri03B7](https://doi.org/10.3133/twri03B7)
+
+[Sun, Y., Clement, T.P., 1999. *A Decomposition Method for Solving Coupled Multi–Species Reactive Transport Problems*, Transport in Porous Media 37, pp. 327–346, https://doi.org/10.1023/A:1006507514019](https://doi.org/10.1023/A:1006507514019)
