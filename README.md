@@ -53,7 +53,7 @@ xc = 0   # x-coordinate of point source, m
 yc = 0   # y-coordinate of point source, m
 zc = 0   # z-coordinate of point source, m
 c0 = 100 # injection concentration, mg/L
-Q = 1    # injection rate, m^3/d
+Q = 1    # injection rate, m³/d
 
 # Aquifer parameters ----
 v = 0.05  # uniform groundwater flow velocity in x-direction, m/d
