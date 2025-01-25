@@ -302,7 +302,7 @@ def _integrand_patchi(tau, x, y, z, v, Dx, Dy, Dz, y1, y2, z1, z2, lamb):
 
 
 def patchi(
-    c0, x, y, z, t, v, ah, al, av, y1, y2, z1, z2, Dm=0, lamb=0, R=1.0, order=100
+    c0, x, y, z, t, v, al, ah, av, y1, y2, z1, z2, Dm=0, lamb=0, R=1.0, order=100
 ):
     """Compute the 3D concentration field of a dissolved solute from a finite-width and height source in an semi-infinite
     aquifer with uniform background flow.
