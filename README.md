@@ -7,7 +7,14 @@ Currently, all solutions shown in [Wexler (1992)](https://doi.org/10.3133/twri03
 Since all equations are linear, superposition in time and space can be applied to create complex source geometries with time-varying source concentrations. Gauss-Legendre quadrature is used to solve the integrals which require numerical integration. Sequential or parallel first-order parent-daughter chain reactions are supported using the method described by [Sun & Clement (1999)](https://doi.org/10.1023/A:1006507514019).
 
 ## To install
-Download or `git clone` the [GitHub repository](https://github.com/cneyens/adepy) locally. Then install using:
+
+The released version can be installed using `pip`:
+
+```
+pip install adepy
+```
+
+To install the development version, download or `git clone` the [GitHub repository](https://github.com/cneyens/adepy) locally. Then install using:
 
 ```
 pip install -e <path/to/local/clone>
