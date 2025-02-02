@@ -41,8 +41,8 @@ jobs:
     runs-on: ubuntu-latest
 
     environment:
-      name: testpypi # pypi
-      url: https://test.pypi.org/p/adepy # https://pypi.org/p/adepy
+      name: pypi
+      url: https://pypi.org/p/adepy
 
     permissions:
       id-token: write  # IMPORTANT: mandatory for trusted publishing
@@ -55,5 +55,3 @@ jobs:
         path: dist/
     - name: Publish distribution to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        repository-url: https://test.pypi.org/legacy/ # remove for PyPi
