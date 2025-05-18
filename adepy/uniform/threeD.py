@@ -111,10 +111,10 @@ def _isneginf(x):
 
 @njit
 def _series_patchf(x, y, z, t, v, Dx, Dy, Dz, w, h, y1, y2, z1, z2, lamb, nterm):
-    t = np.asfarray(t.flatten())
-    x = np.asfarray(x.flatten())
-    y = np.asfarray(y.flatten())
-    z = np.asfarray(z.flatten())
+    t = np.asarray(t.flatten(), dtype=np.float64)
+    x = np.asarray(x.flatten(), dtype=np.float64)
+    y = np.asarray(y.flatten(), dtype=np.float64)
+    z = np.asarray(z.flatten(), dtype=np.float64)
 
     if len(t) > 1:
         series = np.zeros_like(t, dtype=np.float64)
