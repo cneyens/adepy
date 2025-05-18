@@ -98,15 +98,36 @@ def point3(c0, x, y, z, t, v, n, al, ah, av, Q, xc, yc, zc, Dm=0, lamb=0, R=1.0)
 
     return c0 * Q * a * b
 
+@njit
+def _isnan(x):
+    return x != x
 
-# @njit
+@njit
+def _isneginf(x):
+    return x == -np.inf
+
+@njit
 def _series_patchf(x, y, z, t, v, Dx, Dy, Dz, w, h, y1, y2, z1, z2, lamb, nterm):
+    
+    t = np.asfarray(t.flatten())
+    x = np.asfarray(x.flatten())
+    y = np.asfarray(y.flatten())
+    z = np.asfarray(z.flatten())
+
     if len(t) > 1:
         series = np.zeros_like(t, dtype=np.float64)
+        t_arr = t
+        x_arr = np.full_like(t, x[0])
+        y_arr = np.full_like(t, y[0])
+        z_arr = np.full_like(t, z[0])
     else:
         series = np.zeros_like(x, dtype=np.float64)
+        x_arr = x
+        y_arr = y
+        z_arr = z
+        t_arr = np.full_like(x, t[0])
 
-    subterm_outer = 0.0
+    subterm_outer = np.array([0.0], dtype=np.float64)
     outer_close_contour = 0
     for m in range(nterm):
         zeta = m * np.pi / h
@@ -134,24 +155,30 @@ def _series_patchf(x, y, z, t, v, Dx, Dy, Dz, w, h, y1, y2, z1, z2, lamb, nterm)
             else:
                 Pn = (np.sin(eta * y2) - np.sin(eta * y1)) / (n * np.pi)
 
-            term = np.exp((x * (v - beta) / (2 * Dx))) * erfc(
-                (x - beta * t) / (2 * np.sqrt(Dx * t))
-            ) + np.exp((x * (v + beta)) / (2 * Dx)) * erfc(
-                (x + beta * t) / (2 * np.sqrt(Dx * t))
-            )
+            for i in range(series.size):
+                xi = x_arr[i]
+                yi = y_arr[i]
+                zi = z_arr[i]
+                ti = t_arr[i]
+                sqrt_Dx_t = 2 * np.sqrt(Dx * ti)
+                arg1 = (xi - beta * ti) / sqrt_Dx_t
+                arg2 = (xi + beta * ti) / sqrt_Dx_t
+                term = (
+                    np.exp((xi * (v - beta)) / (2 * Dx)) * erfc(arg1)
+                    + np.exp((xi * (v + beta)) / (2 * Dx)) * erfc(arg2)
+                )
+                add = Lmn * Om * Pn * np.cos(zeta * zi) * np.cos(eta * yi) * term
 
-            add = Lmn * Om * Pn * np.cos(zeta * z) * np.cos(eta * y) * term
+                # Numba-compatible nan/inf handling
+                if _isneginf(add) or _isnan(add):
+                    add = 0.0
 
-            add = np.where(np.isneginf(add), 0.0, add)
-            add = np.where(np.isnan(add), 0.0, add)
-            series += add
+                series[i] += add
+                subterm_inner += add
 
             # if last 10 inner terms sum to < 1e-12, exit inner loop
-            # checked every 10 inner terms
-            # TODO check this
-            subterm_inner += add
             if (n + 1) % 10 == 0:
-                if np.all(abs(subterm_inner) < 1e-12):
+                if np.abs(subterm_inner) < 1e-12:
                     inner_close = True
                     break
                 else:
@@ -160,8 +187,8 @@ def _series_patchf(x, y, z, t, v, Dx, Dy, Dz, w, h, y1, y2, z1, z2, lamb, nterm)
         # if summation difference < 1e-12 for 10 subsequent outer iterations
         # and inner summation is closed every time,
         # then exit outer loop
-        if m > 0 and inner_close:  # at least 1 outer iteration should have completed
-            if np.all(abs(subterm_outer - series) < 1e-12):
+        if m > 0 and inner_close:
+            if np.all(np.abs(np.asarray(subterm_outer) - np.asarray(series)) < 1e-12):
                 outer_close_contour += 1
             else:
                 outer_close_contour = 0
@@ -172,9 +199,6 @@ def _series_patchf(x, y, z, t, v, Dx, Dy, Dz, w, h, y1, y2, z1, z2, lamb, nterm)
             break
 
         subterm_outer = series.copy()
-
-    # if m == (nterm - 1):
-    #     warnings.warn(f"Series did not converge in {nterm} outer summations")
 
     return series
 
@@ -279,6 +303,10 @@ def patchf(
         x, y, z, t, v, Dx, Dy, Dz, w, h, y1, y2, z1, z2, lamb, nterm
     )
 
+    if len(t) > 1:
+        series = series.reshape(t.shape)
+    else:
+        series = series.reshape(x.shape)
     return c0 * series
 
 
