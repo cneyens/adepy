@@ -98,17 +98,19 @@ def point3(c0, x, y, z, t, v, n, al, ah, av, Q, xc, yc, zc, Dm=0, lamb=0, R=1.0)
 
     return c0 * Q * a * b
 
+
 @njit
 def _isnan(x):
     return x != x
+
 
 @njit
 def _isneginf(x):
     return x == -np.inf
 
+
 @njit
 def _series_patchf(x, y, z, t, v, Dx, Dy, Dz, w, h, y1, y2, z1, z2, lamb, nterm):
-    
     t = np.asfarray(t.flatten())
     x = np.asfarray(x.flatten())
     y = np.asfarray(y.flatten())
@@ -163,10 +165,9 @@ def _series_patchf(x, y, z, t, v, Dx, Dy, Dz, w, h, y1, y2, z1, z2, lamb, nterm)
                 sqrt_Dx_t = 2 * np.sqrt(Dx * ti)
                 arg1 = (xi - beta * ti) / sqrt_Dx_t
                 arg2 = (xi + beta * ti) / sqrt_Dx_t
-                term = (
-                    np.exp((xi * (v - beta)) / (2 * Dx)) * erfc(arg1)
-                    + np.exp((xi * (v + beta)) / (2 * Dx)) * erfc(arg2)
-                )
+                term = np.exp((xi * (v - beta)) / (2 * Dx)) * erfc(arg1) + np.exp(
+                    (xi * (v + beta)) / (2 * Dx)
+                ) * erfc(arg2)
                 add = Lmn * Om * Pn * np.cos(zeta * zi) * np.cos(eta * yi) * term
 
                 # Numba-compatible nan/inf handling
