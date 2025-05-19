@@ -17,7 +17,7 @@ def _integrand_point2(tau, x, y, v, Dx, Dy, xc, yc, lamb):
     )
 
 
-def point2(c0, x, y, t, v, n, al, ah, Qa, xc, yc, Dm=0, lamb=0, R=1.0, order=100):
+def point2(c0, x, y, t, v, n, al, ah, Qa, xc, yc, Dm=0.0, lamb=0.0, R=1.0, order=100):
     """Compute the 2D concentration field of a dissolved solute from a continuous point source in an infinite aquifer
     with uniform background flow.
 
@@ -162,7 +162,7 @@ def _series_stripf(x, y, t, v, Dx, Dy, y2, y1, w, lamb, nterm):
     return series
 
 
-def stripf(c0, x, y, t, v, al, ah, y1, y2, w, Dm=0, lamb=0, R=1.0, nterm=100):
+def stripf(c0, x, y, t, v, al, ah, y1, y2, w, Dm=0.0, lamb=0.0, R=1.0, nterm=100):
     """Compute the 2D concentration field of a dissolved solute from a finite-width source in an finite-width aquifer
     with uniform background flow.
 
@@ -263,7 +263,7 @@ def _integrand_stripi(tau, x, y, v, Dx, Dy, y2, y1, lamb):
     return ig
 
 
-def stripi(c0, x, y, t, v, al, ah, y1, y2, Dm=0, lamb=0, R=1.0, order=100):
+def stripi(c0, x, y, t, v, al, ah, y1, y2, Dm=0.0, lamb=0.0, R=1.0, order=100):
     """Compute the 2D concentration field of a dissolved solute from a finite-width source in an semi-infinite aquifer
     with uniform background flow.
 
@@ -363,7 +363,7 @@ def _integrand_gauss(tau, x, y, v, Dx, Dy, yc, sigma, lamb):
     return ig
 
 
-def gauss(c0, x, y, t, v, al, ah, yc, sigma, Dm=0, lamb=0, R=1.0, order=100):
+def gauss(c0, x, y, t, v, al, ah, yc, sigma, Dm=0.0, lamb=0.0, R=1.0, order=100):
     """Compute the 2D concentration field of a dissolved solute from a Gaussian source in an semi-infinite aquifer
     with uniform background flow.
 

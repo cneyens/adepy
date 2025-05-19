@@ -31,7 +31,7 @@ def _bserie_finite1(betas, x, t, Pe, L, D, lamb):
     return bs
 
 
-def finite1(c0, x, t, v, al, L, Dm=0, lamb=0, R=1.0, nterm=1000):
+def finite1(c0, x, t, v, al, L, Dm=0.0, lamb=0.0, R=1.0, nterm=1000):
     """Compute the 1D concentration field of a dissolved solute from a constant-concentration inlet source in
     a finite system with uniform background flow.
 
@@ -140,7 +140,7 @@ def _bserie_finite3(betas, x, t, Pe, L, D, lamb):
     return bs
 
 
-def finite3(c0, x, t, v, al, L, Dm=0, lamb=0, R=1.0, nterm=1000):
+def finite3(c0, x, t, v, al, L, Dm=0.0, lamb=0.0, R=1.0, nterm=1000):
     """Compute the 1D concentration field of a dissolved solute from a Cauchy-type inlet source in
     a finite system with uniform background flow.
 
@@ -235,7 +235,7 @@ def finite3(c0, x, t, v, al, L, Dm=0, lamb=0, R=1.0, nterm=1000):
     return c0 * (term0 + term1 * series)
 
 
-def seminf1(c0, x, t, v, al, Dm=0, lamb=0, R=1.0):
+def seminf1(c0, x, t, v, al, Dm=0.0, lamb=0.0, R=1.0):
     """Compute the 1D concentration field of a dissolved solute from a constant-concentration inlet source in
     a semi-finite system with uniform background flow.
 
@@ -294,7 +294,7 @@ def seminf1(c0, x, t, v, al, Dm=0, lamb=0, R=1.0):
     return c0 * 0.5 * term
 
 
-def seminf3(c0, x, t, v, al, Dm=0, lamb=0, R=1.0):
+def seminf3(c0, x, t, v, al, Dm=0.0, lamb=0.0, R=1.0):
     """Compute the 1D concentration field of a dissolved solute from a Cauchy-type inlet source in
     a semi-finite system with uniform background flow.
 
@@ -373,3 +373,4 @@ def seminf3(c0, x, t, v, al, Dm=0, lamb=0, R=1.0):
         term0 = v**2 / (4 * lamb * D)
 
     return c0 * term0 * term
+

@@ -4,7 +4,7 @@ from adepy._helpers import _erfc_nb as erfc
 from adepy._helpers import _integrate as integrate
 
 
-def point3(c0, x, y, z, t, v, n, al, ah, av, Q, xc, yc, zc, Dm=0, lamb=0, R=1.0):
+def point3(c0, x, y, z, t, v, n, al, ah, av, Q, xc, yc, zc, Dm=0.0, lamb=0.0, R=1.0):
     """Compute the 3D concentration field of a dissolved solute from a continuous point source in an infinite aquifer
     with uniform background flow.
 
@@ -205,7 +205,7 @@ def _series_patchf(x, y, z, t, v, Dx, Dy, Dz, w, h, y1, y2, z1, z2, lamb, nterm)
 
 
 def patchf(
-    c0, x, y, z, t, v, al, ah, av, w, h, y1, y2, z1, z2, Dm=0, lamb=0, R=1.0, nterm=100
+    c0, x, y, z, t, v, al, ah, av, w, h, y1, y2, z1, z2, Dm=0.0, lamb=0.0, R=1.0, nterm=100
 ):
     """Compute the 3D concentration field of a dissolved solute from a finite-width and height source in an finite-width
     and height aquifer with uniform background flow.
@@ -331,7 +331,7 @@ def _integrand_patchi(tau, x, y, z, v, Dx, Dy, Dz, y1, y2, z1, z2, lamb):
 
 
 def patchi(
-    c0, x, y, z, t, v, al, ah, av, y1, y2, z1, z2, Dm=0, lamb=0, R=1.0, order=100
+    c0, x, y, z, t, v, al, ah, av, y1, y2, z1, z2, Dm=0.0, lamb=0.0, R=1.0, order=100
 ):
     """Compute the 3D concentration field of a dissolved solute from a finite-width and height source in an semi-infinite
     aquifer with uniform background flow.
