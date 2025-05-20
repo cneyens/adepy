@@ -2,6 +2,7 @@ from scipy.optimize import brentq
 import numpy as np
 from adepy._helpers import _erfc_nb as erfc
 from adepy._helpers import _integrate as integrate
+from adepy._helpers import _dehoog as dehoog
 from numba import njit
 
 
@@ -534,3 +535,239 @@ def point1(c0, x, t, v, n, al, qi, xc, Dm=0.0, lamb=0.0, R=1.0, order=100):
     term0 = qi / (n * np.sqrt(4 * np.pi * D)) * np.exp(v * (x - xc) / (2 * D))
 
     return c0 * term0 * term
+
+
+def _mpne1d_laplace(
+    p,
+    c0,
+    x,
+    q,
+    D,
+    f,
+    rhob,
+    thm,
+    thim,
+    cout,
+    delta,
+    pchk,
+    fchk,
+    L,
+    alfa=1.0,
+    fm=1.0,
+    fim=1.0,
+    km=0.0,
+    kim=0.0,
+    km2=0.0,
+    kim2=0.0,
+    lm=0.0,
+    lm1=0.0,
+    lm2=0.0,
+    lim=0.0,
+    lim1=0.0,
+    lim2=0.0,
+    icm=0.0,
+    icim=0.0,
+    icms=0.0,
+    icims=0.0,
+    domain=1,
+    output="mobile",
+):
+    # Inflow Laplace transform
+    fs = c0 / p
+
+    # Initial condition terms
+    G10 = (
+        ((1 - f) * rhob * kim2 / (p + kim2 + lim2)) * icims
+        + (thim + (1 - f) * rhob * fim * kim) * icim
+    ) / (
+        p * (thim + (1 - f) * rhob * fim * kim)
+        + thim * lim
+        + (1 - f) * rhob * lim1 * fim * kim
+        + (1 - f) * rhob * (1 - fim) * kim * kim2 * (p + lim2) / (p + kim2 + lim2)
+        + alfa
+    )
+    G20 = (thm + f * rhob * fm * km) * icm + (f * rhob * km2 / (p + km2 + lm2)) * icms
+
+    # Gamma terms
+    GAM1 = (1 + (f * rhob * fm * km) / thm) * p
+    GAM2 = (f * rhob * (1 - fm) * km * km2 * ((p + lm2) / (p + km2 + lm2))) / thm
+    GAM3 = (
+        alfa
+        - (alfa**2)
+        / (
+            (thim + (1 - f) * rhob * fim * kim) * p
+            + thim * lim
+            + (1 - f) * rhob * lim1 * fim * kim
+            + (1 - f) * rhob * (1 - fim) * kim * kim2 * ((p + lim2) / (p + kim2 + lim2))
+            + alfa
+        )
+    ) / thm
+    GAM4 = lm + (f * rhob * lm1 * fm * km) / thm
+
+    B = thm * (GAM1 + GAM2 + GAM3 + GAM4)
+    H1 = (q - np.sqrt(q**2 + 4 * B * thm * D)) / (2 * thm * D)
+    H2 = (q + np.sqrt(q**2 + 4 * B * thm * D)) / (2 * thm * D)
+
+    # Solution for different domains
+    if domain == 1:  # Semi-infinite
+        E1 = (
+            fs - (alfa * G10 + G20) / B
+            if (abs(q) <= 0.0 and delta <= 0.0)
+            else (q / (q - thm * delta * D * H1)) * (fs - (alfa * G10 + G20) / B)
+        )
+        CMB = E1 * np.exp(H1 * x) + (alfa * G10 + G20) / B
+    elif domain == 2:  # Finite, type II
+        if abs(q) <= 0.0 and delta <= 0.0:
+            D1 = H2 * np.exp(H2 * L) - H1 * np.exp(H1 * L)
+            D2 = (fs - (alfa * G10 + G20) / B) * H2 * np.exp(H2 * L)
+            D3 = -(fs - (alfa * G10 + G20) / B) * H1 * np.exp(H1 * L)
+        else:
+            D1 = H2 * (q - thm * delta * D * H1) * np.exp(H2 * L) - H1 * (
+                q - thm * delta * D * H2
+            ) * np.exp(H1 * L)
+            D2 = q * (fs - (alfa * G10 + G20) / B) * H2 * np.exp(H2 * L)
+            D3 = -q * (fs - (alfa * G10 + G20) / B) * H1 * np.exp(H1 * L)
+        E1, E2 = D2 / D1, D3 / D1
+        CMB = E1 * np.exp(H1 * x) + E2 * np.exp(H2 * x) + (alfa * G10 + G20) / B
+    elif domain == 3:  # Finite, type I
+        if abs(q) <= 0.0 and delta <= 0.0:
+            D4 = np.exp(H2 * L) - np.exp(H1 * L)
+            D5 = (fs - (alfa * G10 + G20) / B) * np.exp(H2 * L) - (
+                cout / p - (alfa * G10 + G20) / B
+            )
+            D6 = -(fs - (alfa * G10 + G20) / B) * np.exp(H1 * L) + (
+                cout / p - (alfa * G10 + G20) / B
+            )
+        else:
+            D4 = (q - thm * delta * D * H1) * np.exp(H2 * L) - (
+                q - thm * delta * D * H2
+            ) * np.exp(H1 * L)
+            D5 = q * (fs - (alfa * G10 + G20) / B) * np.exp(H2 * L) - (
+                cout / p - (alfa * G10 + G20) / B
+            ) * (q - thm * delta * D * H2)
+            D6 = -q * (fs - (alfa * G10 + G20) / B) * np.exp(H1 * L) + (
+                cout / p - (alfa * G10 + G20) / B
+            ) * (q - thm * delta * D * H1)
+        E1, E2 = D5 / D4, D6 / D4
+        CMB = E1 * np.exp(H1 * x) + E2 * np.exp(H2 * x) + (alfa * G10 + G20) / B
+    else:
+        raise ValueError("Unknown domain type")
+
+    if output == "mobile":
+        return CMB
+    elif output == "immobile":
+        if (pchk < 1e-10) and (fchk < 1e-10):
+            return 0.0
+        denom = (
+            p * (thim + (1 - f) * rhob * fim * kim)
+            + thim * lim
+            + (1 - f) * rhob * lim1 * fim * kim
+            + (1 - f) * rhob * (1 - fim) * kim * kim2 * ((p + lim2) / (p + kim2 + lim2))
+            + alfa
+        )
+        return CMB * (alfa / denom) + G10
+    else:
+        raise ValueError('output should be "mobile" or "immobile"')
+
+
+def mpne(
+    c0,
+    x,
+    t,
+    v,
+    al,
+    L,
+    n,
+    rhob,
+    Dm=0.0,
+    phi=1.0,
+    f=1.0,
+    alfa=1.0,
+    fm=1.0,
+    fim=1.0,
+    km=0.0,
+    kim=0.0,
+    km2=0.0,
+    kim2=0.0,
+    lm=0.0,
+    lm1=0.0,
+    lm2=0.0,
+    lim=0.0,
+    lim1=0.0,
+    lim2=0.0,
+    icm=0.0,
+    icim=0.0,
+    icms=0.0,
+    icims=0.0,
+    cout=0.0,
+    domain=1,
+    inflowbc="cauchy",
+    output="mobile",
+):
+    t = np.atleast_1d(t)
+    x = np.atleast_1d(x)
+
+    if len(t) > 1 and len(x) > 1:
+        raise ValueError('Either "t" or "x" should be of length 1')
+
+    if inflowbc == "dirichlet":
+        delta = 0.0
+    elif inflowbc == "cauchy":
+        delta = 1.0
+    else:
+        raise ValueError('inflowbc should be "dirichlet" or "cauchy')
+
+    # set porosities
+    thm = phi * n
+    thim = (1.0 - phi) * n
+    pchk, fchk = abs(phi - 1.0), abs(f - 1.0)
+    if (pchk < 1e-10) and (fchk < 1e-10):
+        alfa = 1.0
+
+    # set darcy and dispersion flux
+    q = v * thm
+    D = al * v + Dm
+
+    if len(t) > 1:
+        c = np.zeros_like(t)
+    else:
+        c = np.zeros_like(x)
+
+    for i, ti in enumerate(t):
+        c[i] = dehoog(
+            t=ti,
+            fbar=_mpne1d_laplace,
+            c0=c0,
+            x=x,
+            q=q,
+            D=D,
+            f=f,
+            rhob=rhob,
+            thm=thm,
+            thim=thim,
+            cout=cout,
+            delta=delta,
+            pchk=pchk,
+            fchk=fchk,
+            L=L,
+            alfa=alfa,
+            fm=fm,
+            fim=fim,
+            km=km,
+            kim=kim,
+            km2=km2,
+            kim2=kim2,
+            lm=lm,
+            lm1=lm1,
+            lm2=lm2,
+            lim=lim,
+            lim1=lim1,
+            lim2=lim2,
+            icm=icm,
+            icim=icim,
+            icms=icms,
+            icims=icims,
+            domain=domain,
+            output=output,
+        )
+    return c
