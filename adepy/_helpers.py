@@ -32,8 +32,8 @@ def _integrate(integrand, t, *args, order=100, method="legendre"):
     elif method == "quadrature":
 
         def integrate(t, *args):
-            F = quad(integrand, 0, t, args=args.items)
-            return F
+            F = quad(integrand, 0, t, args=args)
+            return F[0]
 
     else:
         raise ValueError('Integration method should be "legendre" or "quadrature"')
