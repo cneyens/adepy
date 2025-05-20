@@ -24,7 +24,7 @@ def point2(c0, x, y, t, v, n, al, ah, Qa, xc, yc, Dm=0.0, lamb=0.0, R=1.0, order
     Source: [wexler_1992]_ - POINT2 algorithm (equation 76).
 
     The two-dimensional advection-dispersion equation is solved for concentration at specified `x` and `y` location(s) and
-    output time(s) `t`. A point source is continuously injecting a known concentration c0 at known injection rate Q in the infinite aquifer
+    output time(s) `t`. A point source is continuously injecting a known concentration `c0` at known injection rate `Qa` in the infinite aquifer
     with specified uniform background flow in the x-direction. It is assumed that the injection rate does not significantly alter the flow
     field. The solute can be subjected to 1st-order decay. Since the equation is linear, multiple sources can be superimposed in time and space.
 
@@ -448,3 +448,82 @@ def gauss(c0, x, y, t, v, al, ah, yc, sigma, Dm=0.0, lamb=0.0, R=1.0, order=100)
     term0 = 2 * x * sigma / np.sqrt(2 * np.pi * Dx) * np.exp(v * x / (2 * Dx))
 
     return c0 * term0 * term
+
+
+def pulse2(m0, x, y, t, v, n, al, ah, xc=0.0, yc=0.0, Dm=0.0, lamb=0.0, R=1.0):
+    """Compute the 2D concentration field of a dissolved solute from an instantaneous pulse point source in an infinite aquifer
+    with uniform background flow.
+
+    Source: [bear_1979]_
+
+    The two-dimensional advection-dispersion equation is solved for concentration at specified `x` and `y` location(s) and
+    output time(s) `t`. An infinite system with uniform background flow in the x-direction is subjected to a pulse source
+    with mass `m0` at `xc-yc` at time `t=0`.
+    The solute can be subjected to 1st-order decay. Since the equation is linear, multiple sources can be superimposed
+    in time and space.
+    Note that the equation has the same shape as the probability density function of a bivariate Gaussian distribution.
+
+    The mass center of the plume at a given time `t` can be found at `y=yc` and `x=xc + v*t/R`.
+
+    Parameters
+    ----------
+    m0 : float
+        Source mass [M].
+    x : float or 1D or 2D array of floats
+        x-location(s) to compute output at [L].
+    y : float or 1D or 2D array of floats
+        y-location(s) to compute output at [L].
+    t : float or 1D of floats
+        Time(s) to compute output at [T].
+    v : float
+        Average linear groundwater flow velocity of the uniform background flow in the x-direction [L/T].
+    n : float
+        Aquifer porosity. Should be between 0 and 1 [-].
+    al : float
+        Longitudinal dispersivity [L].
+    ah : float
+        Horizontal transverse dispersivity [L].
+    xc : float
+        x-coordinate of the point source [L], defaults to 0.0.
+    yc : float
+        y-coordinate of the point source [L], defaults to 0.0.
+    Dm : float, optional
+        Effective molecular diffusion coefficient [L**2/T]; defaults to 0 (no molecular diffusion).
+    lamb : float, optional
+        First-order decay rate [1/T], defaults to 0 (no decay).
+    R : float, optional
+        Retardation coefficient [-]; defaults to 1 (no retardation).
+
+    Returns
+    -------
+    ndarray
+        Numpy array with computed concentrations at location(s) `x` and `y` and time(s) `t`.
+
+    References
+    ----------
+    .. [bear_1979] Bear, J., 1979. Hydraulics of Groundwater. New York, McGraw Hill, 596 p.
+
+    """
+    x = np.atleast_1d(x)
+    y = np.atleast_1d(y)
+    t = np.atleast_1d(t)
+
+    Dx = al * v + Dm
+    Dy = ah * v + Dm
+
+    # apply retardation coefficient to right-hand side
+    v = v / R
+    Dx = Dx / R
+    Dy = Dy / R
+
+    term0 = (
+        1
+        / (4 * np.pi * n * t * np.sqrt(Dx * Dy))
+        * np.exp(
+            -((x - xc - v * t) ** 2) / (4 * Dx * t)
+            - (y - yc) ** 2 / (4 * Dy * t)
+            - lamb * t
+        )
+    )
+
+    return m0 * term0

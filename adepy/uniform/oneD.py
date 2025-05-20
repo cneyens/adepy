@@ -1,6 +1,8 @@
 from scipy.optimize import brentq
 import numpy as np
 from adepy._helpers import _erfc_nb as erfc
+from adepy._helpers import _integrate as integrate
+from numba import njit
 
 
 # @njit
@@ -374,3 +376,161 @@ def seminf3(c0, x, t, v, al, Dm=0.0, lamb=0.0, R=1.0):
 
     return c0 * term0 * term
 
+
+def pulse1(m0, x, t, v, n, al, xc=0.0, Dm=0.0, lamb=0.0, R=1.0):
+    """Compute the 1D concentration field of a dissolved solute from an instantaneous pulse point source in an infinite aquifer
+    with uniform background flow.
+
+    Source: [bear_1979]_
+
+    The one-dimensional advection-dispersion equation is solved for concentration at specified `x` location(s) and
+    output time(s) `t`. An infinite system with uniform background flow in the x-direction is subjected to a pulse source
+    with mass `m0` at `xc` at time `t=0`.
+    The solute can be subjected to 1st-order decay. Since the equation is linear, multiple sources can be superimposed
+    in time and space.
+    Note that the equation has the same shape as the probability density function of a Gaussian distribution.
+
+    The mass center of the plume at a given time `t` can be found at `x=xc + v*t/R`.
+
+    Parameters
+    ----------
+    m0 : float
+        Source mass [M].
+    x : float or 1D of floats
+        x-location(s) to compute output at [L].
+    t : float or 1D of floats
+        Time(s) to compute output at [T].
+    v : float
+        Average linear groundwater flow velocity of the uniform background flow in the x-direction [L/T].
+    n : float
+        Aquifer porosity. Should be between 0 and 1 [-].
+    al : float
+        Longitudinal dispersivity [L].
+    xc : float
+        x-coordinate of the point source [L], defaults to 0.0.
+    Dm : float, optional
+        Effective molecular diffusion coefficient [L**2/T]; defaults to 0 (no molecular diffusion).
+    lamb : float, optional
+        First-order decay rate [1/T], defaults to 0 (no decay).
+    R : float, optional
+        Retardation coefficient [-]; defaults to 1 (no retardation).
+
+    Returns
+    -------
+    ndarray
+        Numpy array with computed concentrations at location(s) `x` and time(s) `t`.
+
+    References
+    ----------
+    .. [bear_1979] Bear, J., 1979. Hydraulics of Groundwater. New York, McGraw Hill, 596 p.
+
+    """
+    x = np.atleast_1d(x)
+    t = np.atleast_1d(t)
+
+    D = al * v + Dm
+
+    # apply retardation coefficient to right-hand side
+    v = v / R
+    D = D / R
+
+    term0 = (
+        1
+        / (n * np.sqrt(4 * np.pi * D * t))
+        * np.exp(-((x - xc - v * t) ** 2) / (4 * D * t) - lamb * t)
+    )
+
+    return m0 * term0
+
+
+@njit
+def _integrand_point1(tau, x, v, D, xc, lamb):
+    return (
+        1
+        / np.sqrt(tau)
+        * np.exp(-(v**2 / (4 * D) + lamb) * tau - (x - xc) ** 2 / (4 * D * tau))
+    )
+
+
+def point1(c0, x, t, v, n, al, qi, xc, Dm=0.0, lamb=0.0, R=1.0, order=100):
+    """Compute the 1D concentration field of a dissolved solute from a continuous point source in an infinite aquifer or column
+    with uniform background flow.
+
+    Source: [bear_1979]_
+
+    The one-dimensional advection-dispersion equation is solved for concentration at specified `x` location(s) and
+    output time(s) `t`. A point source is continuously injecting a known concentration `c0` at known injection flux `qi` in the infinite aquifer
+    with specified uniform background flow in the x-direction. It is assumed that the injection rate does not significantly alter the flow
+    field. The solute can be subjected to 1st-order decay. Since the equation is linear, multiple sources can be superimposed in time and space.
+
+    If multiple `x` values are specified, only one `t` can be supplied, and vice versa.
+
+    A Gauss-Legendre quadrature of order `order` is used to solve the integral. For `x` values very close to the source location
+    (`xc`), the algorithm might have trouble finding a solution.
+
+    Parameters
+    ----------
+    c0 : float
+        Point source concentration [M/L**3]
+    x : float or 1D array of floats
+        x-location(s) to compute output at [L].
+    t : float or 1D or 2D array of floats
+        Time(s) to compute output at [T].
+    v : float
+        Average linear groundwater flow velocity of the uniform background flow in the x-direction [L/T].
+    n : float
+        Aquifer porosity. Should be between 0 and 1 [-].
+    al : float
+        Longitudinal dispersivity [L].
+    qi : float
+        Injection flux rate (positive) of the point source [L/T].
+    xc : float
+        x-coordinate of the point source [L].
+    Dm : float, optional
+        Effective molecular diffusion coefficient [L**2/T]; defaults to 0 (no molecular diffusion).
+    lamb : float, optional
+        First-order decay rate [1/T], defaults to 0 (no decay).
+    R : float, optional
+        Retardation coefficient [-]; defaults to 1 (no retardation).
+    order : integer, optional
+        Order of the Gauss-Legendre polynomial used in the integration. Defaults to 100.
+
+    Returns
+    -------
+    ndarray
+        Numpy array with computed concentrations at location(s) `x` and time(s) `t`.
+
+    References
+    ----------
+    .. [bear_1979] Bear, J., 1979. Hydraulics of Groundwater. New York, McGraw Hill, 596 p.
+
+    """
+    x = np.atleast_1d(x)
+    t = np.atleast_1d(t)
+
+    D = al * v + Dm
+
+    # apply retardation coefficient to right-hand side
+    v = v / R
+    D = D / R
+    qi = qi / R
+
+    if len(t) > 1 and len(x) > 1:
+        raise ValueError(
+            "If multiple values for t are specified, only one x value is allowed"
+        )
+
+    term = integrate(
+        _integrand_point1,
+        t,
+        x,
+        v,
+        D,
+        xc,
+        lamb,
+        order=order,
+        method="legendre",
+    )
+    term0 = qi / (n * np.sqrt(4 * np.pi * D)) * np.exp(v * (x - xc) / (2 * D))
+
+    return c0 * term0 * term

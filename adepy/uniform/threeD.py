@@ -11,7 +11,7 @@ def point3(c0, x, y, z, t, v, n, al, ah, av, Q, xc, yc, zc, Dm=0.0, lamb=0.0, R=
     Source: [wexler_1992]_ - POINT3 algorithm (equation 105).
 
     The three-dimensional advection-dispersion equation is solved for concentration at specified `x`, `y` and `z` location(s) and
-    output time(s) `t`. A point source is continuously injecting a known concentration c0 at known injection rate Q in the infinite aquifer
+    output time(s) `t`. A point source is continuously injecting a known concentration `c0` at known injection rate `Q` in the infinite aquifer
     with specified uniform background flow in the x-direction. It is assumed that the injection rate does not significantly alter the flow
     field. The solute can be subjected to 1st-order decay. Since the equation is linear, multiple sources can be superimposed in time and space.
 
@@ -205,7 +205,25 @@ def _series_patchf(x, y, z, t, v, Dx, Dy, Dz, w, h, y1, y2, z1, z2, lamb, nterm)
 
 
 def patchf(
-    c0, x, y, z, t, v, al, ah, av, w, h, y1, y2, z1, z2, Dm=0.0, lamb=0.0, R=1.0, nterm=100
+    c0,
+    x,
+    y,
+    z,
+    t,
+    v,
+    al,
+    ah,
+    av,
+    w,
+    h,
+    y1,
+    y2,
+    z1,
+    z2,
+    Dm=0.0,
+    lamb=0.0,
+    R=1.0,
+    nterm=100,
 ):
     """Compute the 3D concentration field of a dissolved solute from a finite-width and height source in an finite-width
     and height aquifer with uniform background flow.
@@ -435,3 +453,96 @@ def patchi(
     term0 = x * np.exp(v * x / (2 * Dx)) / (2 * np.sqrt(np.pi * Dx))
 
     return c0 * term0 * term
+
+
+def pulse3(
+    m0, x, y, z, t, v, n, al, ah, av, xc=0.0, yc=0.0, zc=0.0, Dm=0.0, lamb=0.0, R=1.0
+):
+    """Compute the 3D concentration field of a dissolved solute from an instantaneous pulse point source in an infinite aquifer
+    with uniform background flow.
+
+    Source: [wexler_1992]_ - POINT3 algorithm (equation 104).
+
+    The three-dimensional advection-dispersion equation is solved for concentration at specified `x`, `y` and `z` location(s) and
+    output time(s) `t`. An infinite system with uniform background flow in the x-direction is subjected to a pulse source
+    with mass `m0` at `xc-yc-zc` at time `t=0`.
+    The solute can be subjected to 1st-order decay. Since the equation is linear, multiple sources can be superimposed
+    in time and space.
+    Note that the equation has the same shape as the probability density function of a trivariate Gaussian distribution.
+
+    The mass center of the plume at a given time `t` can be found at `y=yc`, `z=zc` and `x=xc + v*t/R`.
+
+    Parameters
+    ----------
+    m0 : float
+        Source mass [M]
+    x : float or 1D or 2D array of floats
+        x-location(s) to compute output at [L].
+    y : float or 1D or 2D array of floats
+        y-location(s) to compute output at [L].
+    z : float or 1D or 2D array of floats
+        z-location(s) to compute output at [L].
+    t : float or 1D of floats
+        Time(s) to compute output at [T].
+    v : float
+        Average linear groundwater flow velocity of the uniform background flow in the x-direction [L/T].
+    n : float
+        Aquifer porosity. Should be between 0 and 1 [-].
+    al : float
+        Longitudinal dispersivity [L].
+    ah : float
+        Horizontal transverse dispersivity [L].
+    av : float
+        Vertical transverse dispersivity [L].
+    xc : float
+        x-coordinate of the point source [L], defaults to 0.0.
+    yc : float
+        y-coordinate of the point source [L], defaults to 0.0.
+    zc : float
+        z-coordinate of the point source [L], defaults to 0.0.
+    Dm : float, optional
+        Effective molecular diffusion coefficient [L**2/T]; defaults to 0 (no molecular diffusion).
+    lamb : float, optional
+        First-order decay rate [1/T], defaults to 0 (no decay).
+    R : float, optional
+        Retardation coefficient [-]; defaults to 1 (no retardation).
+
+    Returns
+    -------
+    ndarray
+        Numpy array with computed concentrations at location(s) `x`, `y` and `z` and time(s) `t`.
+
+    References
+    ----------
+    .. [wexler_1992] Wexler, E.J., 1992. Analytical solutions for one-, two-, and three-dimensional
+        solute transport in ground-water systems with uniform flow, USGS Techniques of Water-Resources
+        Investigations 03-B7, 190 pp., https://doi.org/10.3133/twri03B7
+
+    """
+    x = np.atleast_1d(x)
+    y = np.atleast_1d(y)
+    z = np.atleast_1d(z)
+    t = np.atleast_1d(t)
+
+    Dx = al * v + Dm
+    Dy = ah * v + Dm
+    Dz = av * v + Dm
+
+    # apply retardation coefficient to right-hand side
+    v = v / R
+    Dx = Dx / R
+    Dy = Dy / R
+    Dz = Dz / R
+
+    term0 = (
+        1
+        / (8 * n * np.sqrt(Dx * Dy * Dz * (np.pi * t) ** 3))
+        * np.exp(
+            -((x - xc - v * t) ** 2) / (4 * Dx * t)
+            - (y - yc) ** 2 / (4 * Dy * t)
+            - (z - zc) ** 2 / (4 * Dz * t)
+            - lamb * t
+        )
+    )
+
+    return m0 * term0

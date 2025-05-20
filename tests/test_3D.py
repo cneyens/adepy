@@ -1,5 +1,6 @@
-from adepy.uniform import point3, patchi, patchf
+from adepy.uniform import point3, patchi, patchf, pulse3
 import numpy as np
+from scipy.stats import multivariate_normal
 
 
 def test_point3_shape():
@@ -199,5 +200,49 @@ def test_patchi_shape():
         z2=1650,
         lamb=lamb,
     )
+
+    assert c.shape == (len(t),)
+
+
+def test_pulse3():
+    m0 = 15.0
+    v = 0.05
+    n = 0.2
+    al = 1.2
+    ah = al / 3
+    av = ah
+    x = [5.0, 10.0]
+    y = [2.0, 3.0]
+    z = [0.0, 0.0]
+    xc = 1.0
+    yc = 0.0
+    zc = 0.5
+    t = 50.0
+
+    x, y = np.meshgrid(np.linspace(-2.5, 10, 100), np.linspace(-5, 5, 100))
+    z = 0.0
+    c = pulse3(m0, x, y, z, t, v, n, al, ah, av, xc, yc, zc)
+
+    # trivariate gaussian probability density function
+    sigX = np.sqrt(2 * al * v * t)
+    sigY = np.sqrt(2 * ah * v * t)
+    sigZ = np.sqrt(2 * ah * v * t)
+
+    mu = v * t
+    cov = [[sigX**2, 0, 0], [0, sigY**2, 0], [0, 0, sigZ**2]]
+    dist = multivariate_normal(mean=[mu, 0.0, 0.0], cov=cov)
+    cpdf = m0 / n * dist.pdf(np.dstack([x - xc, y - yc, z * np.ones(y.shape) - zc]))
+    np.testing.assert_array_almost_equal(c, cpdf, decimal=6)
+
+
+def test_pulse3_shape():
+    x, y = np.meshgrid([5.0, 6.0, 7.0], [11.0, 12.0, 13.0])
+
+    c = pulse3(m0=1.0, x=x, y=y, z=0, t=100.0, v=0.1, n=0.2, al=1, ah=1, av=1)
+
+    assert c.shape == (len(x), len(y))
+
+    t = [100, 200, 300]
+    c = pulse3(m0=1.0, x=10, y=11, z=0, t=t, v=0.1, n=0.2, al=1, ah=1, av=1, lamb=0.05)
 
     assert c.shape == (len(t),)
