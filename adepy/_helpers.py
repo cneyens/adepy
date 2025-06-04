@@ -20,19 +20,19 @@ def _erfc_nb(x):
     return _vec_erfc(x)
 
 
-def _integrate(integrand, t, *args, order=100, method="legendre"):
+def _integrate(integrand, t, *args, t0=0.0, order=100, method="legendre"):
     if method == "legendre":
         roots, weights = roots_legendre(order)
 
         def integrate(t, *args):
-            roots_adj = roots * (t - 0) / 2 + (0 + t) / 2
-            F = integrand(roots_adj, *args).dot(weights) * (t - 0) / 2
+            roots_adj = roots * (t - t0) / 2 + (t0 + t) / 2
+            F = integrand(roots_adj, *args).dot(weights) * (t - t0) / 2
             return F
 
     elif method == "quadrature":
 
         def integrate(t, *args):
-            F = quad(integrand, 0, t, args=args)
+            F = quad(integrand, t0, t, args=args)
             return F[0]
 
     else:
