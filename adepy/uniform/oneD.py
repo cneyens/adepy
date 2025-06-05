@@ -692,7 +692,7 @@ def mpne(
     L=None,
     Dm=0.0,
     phi=1.0,
-    f=1.0,
+    f=None,
     alfa=1.0,
     fm=1.0,
     fim=1.0,
@@ -752,7 +752,7 @@ def mpne(
     phi : float, optional
         Fraction of the total porosity which is mobile [-], by default 1.0 (no immobile domain).
     f : float, optional
-        Mass fraction of the sorbent in contact with the mobile region dissolved phase [-], by default 1.0 (no contact with the immobile domain).
+        Mass fraction of the sorbent in contact with the mobile region dissolved phase [-], by default equal to phi.
     alfa : float, optional
         First-order mass transfer rate between the mobile and immobile domain [1/T], by default 1.0 (unity)
     fm : float, optional
@@ -804,7 +804,7 @@ def mpne(
     References
     -------
     .. [sspapa_2004] MPNE1D, 2004. MPNE1D Analytical Solution: User's Guide, version 4.1. S.S. Papadopulos & Associates, Inc.
-    .. [neville_2000] Neville, C.J., Ibaraki, M., Sudicky, E.A., 2000. Solute transport with multiprocess nonequilibrium: a semi-analytical solution approach, Journal of Contaminant Hydrology 44-2, pp. 141-159
+    .. [neville_2000] Neville, C.J., Ibaraki, M., Sudicky, E.A., 2000. Solute transport with multiprocess nonequilibrium: a semi-analytical solution approach, Journal of Contaminant Hydrology 44-2, p. 141-159
 
     """
     t = np.atleast_1d(t)
@@ -832,6 +832,8 @@ def mpne(
     D = al * v + Dm
 
     # set defaults
+    if f is None:
+        f = phi
     if lsm1 is None:
         lsm1 = lamb
     if lsm2 is None:

@@ -69,7 +69,7 @@ def _dehoog(t, fbar, M=7, relerr=1e-4, **kwargs):
     References
     ----------
     .. [sspapa_2004] MPNE1D, 2004. MPNE1D Analytical Solution: User's Guide, version 4.1. S.S. Papadopulos & Associates, Inc.
-    .. [neville_2000] Neville, C.J., Ibaraki, M., Sudicky, E.A., 2000. Solute transport with multiprocess nonequilibrium: a semi-analytical solution approach, Journal of Contaminant Hydrology 44-2, pp. 141-159
+    .. [neville_2000] Neville, C.J., Ibaraki, M., Sudicky, E.A., 2000. Solute transport with multiprocess nonequilibrium: a semi-analytical solution approach, Journal of Contaminant Hydrology 44-2, p. 141-159
 
     """
 

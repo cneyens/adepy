@@ -106,6 +106,6 @@ plt.ylabel('Concentration (mg/L)')
 ## References
 [Wexler, E.J., 1992. *Analytical solutions for one-, two-, and three-dimensional solute transport in ground-water systems with uniform flow*, USGS Techniques of Water-Resources Investigations 03-B7, 190 pp., https://doi.org/10.3133/twri03B7](https://doi.org/10.3133/twri03B7)
 
-[Neville, C.J., Ibaraki, M., Sudicky, E.A., 2000. *Solute transport with multiprocess nonequilibrium: a semi-analytical solution approach*, Journal of Contaminant Hydrology 44-2, pp. 141-159, https://doi.org/10.1016/S0169-7722(00)00094-2](https://doi.org/10.1016/S0169-7722(00)00094-2)
+[Neville, C.J., Ibaraki, M., Sudicky, E.A., 2000. *Solute transport with multiprocess nonequilibrium: a semi-analytical solution approach*, Journal of Contaminant Hydrology 44-2, p. 141-159, https://doi.org/10.1016/S0169-7722(00)00094-2](https://doi.org/10.1016/S0169-7722(00)00094-2)
 
 [Sun, Y., Clement, T.P., 1999. *A Decomposition Method for Solving Coupled Multi–Species Reactive Transport Problems*, Transport in Porous Media 37, p. 327–346, https://doi.org/10.1023/A:1006507514019](https://doi.org/10.1023/A:1006507514019)
