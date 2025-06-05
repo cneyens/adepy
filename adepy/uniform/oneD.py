@@ -2,6 +2,7 @@ from scipy.optimize import brentq
 import numpy as np
 from adepy._helpers import _erfc_nb as erfc
 from adepy._helpers import _integrate as integrate
+from adepy._helpers import _dehoog as dehoog
 from numba import njit
 
 
@@ -534,3 +535,356 @@ def point1(c0, x, t, v, n, al, qi, xc, Dm=0.0, lamb=0.0, R=1.0, order=100):
     term0 = qi / (n * np.sqrt(4 * np.pi * D)) * np.exp(v * (x - xc) / (2 * D))
 
     return c0 * term0 * term
+
+
+# @njit
+def _mpne1d_laplace(
+    p,
+    c0,
+    x,
+    q,
+    D,
+    f,
+    rhob,
+    thm,
+    thim,
+    cout,
+    delta,
+    pchk,
+    fchk,
+    L,
+    alfa,
+    fm,
+    fim,
+    km,
+    kim,
+    km2,
+    kim2,
+    lamb,
+    lsm1,
+    lsm2,
+    lim,
+    lsim1,
+    lsim2,
+    icm,
+    icim,
+    icms,
+    icims,
+    domain=1,
+    output="mobile",
+):
+    # Inflow Laplace transform
+    fs = c0 / p
+
+    # Initial condition terms
+    G10 = (
+        ((1 - f) * rhob * kim2 / (p + kim2 + lsim2)) * icims
+        + (thim + (1 - f) * rhob * fim * kim) * icim
+    ) / (
+        p * (thim + (1 - f) * rhob * fim * kim)
+        + thim * lim
+        + (1 - f) * rhob * lsim1 * fim * kim
+        + (1 - f) * rhob * (1 - fim) * kim * kim2 * (p + lsim2) / (p + kim2 + lsim2)
+        + alfa
+    )
+    G20 = (thm + f * rhob * fm * km) * icm + (f * rhob * km2 / (p + km2 + lsm2)) * icms
+
+    # Gamma terms
+    GAM1 = (1 + (f * rhob * fm * km) / thm) * p
+    GAM2 = (f * rhob * (1 - fm) * km * km2 * ((p + lsm2) / (p + km2 + lsm2))) / thm
+    GAM3 = (
+        alfa
+        - (alfa**2)
+        / (
+            (thim + (1 - f) * rhob * fim * kim) * p
+            + thim * lim
+            + (1 - f) * rhob * lsim1 * fim * kim
+            + (1 - f)
+            * rhob
+            * (1 - fim)
+            * kim
+            * kim2
+            * ((p + lsim2) / (p + kim2 + lsim2))
+            + alfa
+        )
+    ) / thm
+    GAM4 = lamb + (f * rhob * lsm1 * fm * km) / thm
+
+    B = thm * (GAM1 + GAM2 + GAM3 + GAM4)
+    H1 = (q - np.sqrt(q**2 + 4 * B * thm * D)) / (2 * thm * D)
+    H2 = (q + np.sqrt(q**2 + 4 * B * thm * D)) / (2 * thm * D)
+
+    # Solution for different domains
+    if domain == 1:  # Semi-infinite
+        E1 = (
+            fs - (alfa * G10 + G20) / B
+            if (abs(q) <= 0.0 and delta <= 0.0)
+            else (q / (q - thm * delta * D * H1)) * (fs - (alfa * G10 + G20) / B)
+        )
+        CMB = E1 * np.exp(H1 * x) + (alfa * G10 + G20) / B
+    elif domain == 2:  # Finite, type II
+        if abs(q) <= 0.0 and delta <= 0.0:
+            D1 = H2 * np.exp(H2 * L) - H1 * np.exp(H1 * L)
+            D2 = (fs - (alfa * G10 + G20) / B) * H2 * np.exp(H2 * L)
+            D3 = -(fs - (alfa * G10 + G20) / B) * H1 * np.exp(H1 * L)
+        else:
+            D1 = H2 * (q - thm * delta * D * H1) * np.exp(H2 * L) - H1 * (
+                q - thm * delta * D * H2
+            ) * np.exp(H1 * L)
+            D2 = q * (fs - (alfa * G10 + G20) / B) * H2 * np.exp(H2 * L)
+            D3 = -q * (fs - (alfa * G10 + G20) / B) * H1 * np.exp(H1 * L)
+        E1, E2 = D2 / D1, D3 / D1
+        CMB = E1 * np.exp(H1 * x) + E2 * np.exp(H2 * x) + (alfa * G10 + G20) / B
+    elif domain == 3:  # Finite, type I
+        if abs(q) <= 0.0 and delta <= 0.0:
+            D4 = np.exp(H2 * L) - np.exp(H1 * L)
+            D5 = (fs - (alfa * G10 + G20) / B) * np.exp(H2 * L) - (
+                cout / p - (alfa * G10 + G20) / B
+            )
+            D6 = -(fs - (alfa * G10 + G20) / B) * np.exp(H1 * L) + (
+                cout / p - (alfa * G10 + G20) / B
+            )
+        else:
+            D4 = (q - thm * delta * D * H1) * np.exp(H2 * L) - (
+                q - thm * delta * D * H2
+            ) * np.exp(H1 * L)
+            D5 = q * (fs - (alfa * G10 + G20) / B) * np.exp(H2 * L) - (
+                cout / p - (alfa * G10 + G20) / B
+            ) * (q - thm * delta * D * H2)
+            D6 = -q * (fs - (alfa * G10 + G20) / B) * np.exp(H1 * L) + (
+                cout / p - (alfa * G10 + G20) / B
+            ) * (q - thm * delta * D * H1)
+        E1, E2 = D5 / D4, D6 / D4
+        CMB = E1 * np.exp(H1 * x) + E2 * np.exp(H2 * x) + (alfa * G10 + G20) / B
+    else:
+        raise ValueError('"domain" should be 1, 2 or 3.')
+
+    if output == "mobile":
+        return np.atleast_1d(CMB)
+    elif output == "immobile":
+        if (pchk < 1e-10) and (fchk < 1e-10):
+            return np.atleast_1d(0.0)
+        denom = (
+            p * (thim + (1 - f) * rhob * fim * kim)
+            + thim * lim
+            + (1 - f) * rhob * lsim1 * fim * kim
+            + (1 - f)
+            * rhob
+            * (1 - fim)
+            * kim
+            * kim2
+            * ((p + lsim2) / (p + kim2 + lsim2))
+            + alfa
+        )
+        return np.atleast_1d(CMB * (alfa / denom) + G10)
+    else:
+        raise ValueError('output should be "mobile" or "immobile"')
+
+
+def mpne(
+    c0,
+    x,
+    t,
+    v,
+    al,
+    n,
+    rhob,
+    L=None,
+    Dm=0.0,
+    phi=1.0,
+    f=1.0,
+    alfa=1.0,
+    fm=1.0,
+    fim=1.0,
+    km=0.0,
+    kim=0.0,
+    km2=0.0,
+    kim2=0.0,
+    lamb=0.0,
+    lsm1=None,
+    lsm2=None,
+    lim=None,
+    lsim1=None,
+    lsim2=None,
+    icm=0.0,
+    icim=0.0,
+    icms=0.0,
+    icims=0.0,
+    cout=0.0,
+    domain=1,
+    inflowbc="cauchy",
+    output="mobile",
+):
+    """Simulate 1D non-equilibrium transport in uniform background flow using the Multi-Process Non-Equilibrium (MPNE) model.
+
+    Source: [sspapa_2004]_, [neville_2000]_
+
+    1D solute transport in uniform background flow can be modelled using a 1st- or 3th-type boundary condition at the inlet, for a semi-infinite system,
+    a finite system with constant outlet concentration, or a finite system with zero-gradient outlet. Chemical and physical non-equilibrium can be simulated seperately or simultaneously through a two-site and two-region approach, respectively.
+    The two-site approach simulates chemical non-equilibrium, allowing for both linear equilibrium and first-order sorption to occur. The two-region capability allows for mobile-immobile transport, with a kinetic first-order mass transfer rate.
+    Separate sorption coefficients can be specified for the immobile and mobile domains. Separate first-order decay rates can be specified for the aqueous (both mobile and immobile) and sorbed (mobile and immobile, for both the equilibrium and rate-limited sorbed) phases.
+    Aqueous concentration in either the mobile or the immobile domain can be returned. Either `x` or `t` should be of length 1.
+
+    The two-site and two-region models are interchangeable, so few codes include both non-equilibrium processes, unlike the MPNE model.
+
+    The source code is taken from the MNPE1D code ([sspapa_2004]_, [neville_2000]_). The system is solved in the Laplace domain and back-transformed using the De Hoog algorithm.
+
+    Parameters
+    ----------
+    c0 : float
+        Source concentration [M/L**3]
+    x : float or 1D of floats
+        x-location(s) to compute output at [L].
+    t : float or 1D of floats
+        Time(s) to compute output at [T].
+    v : float
+        Average linear groundwater flow velocity of the uniform background flow in the x-direction [L/T].
+    al : float
+        Longitudinal dispersivity [L].
+    n : float
+        Aquifer total porosity [-].
+    rhob : float
+        Dry bulk density of the aquifer [M/L**3].
+    L : float, optional
+        System length for a finite system, by default None. Only used when `domain` is 2 or 3.
+    Dm : float, optional
+        Effective molecular diffusion coefficient [L**2/T]; defaults to 0 (no molecular diffusion).
+    phi : float, optional
+        Fraction of the total porosity which is mobile [-], by default 1.0 (no immobile domain).
+    f : float, optional
+        Mass fraction of the sorbent in contact with the mobile region dissolved phase [-], by default 1.0 (no contact with the immobile domain).
+    alfa : float, optional
+        First-order mass transfer rate between the mobile and immobile domain [1/T], by default 1.0 (unity)
+    fm : float, optional
+        Fraction of equilibrium sorption sites in the mobile domain [-], by default 1.0 (only equilibrium sorption).
+    fim : float, optional
+        Fraction of equilibrium sorption sites in the immobile domain [-], by default 1.0 (only equilibrium sorption).
+    km : float, optional
+        Linear equilibrium sorption coefficient in the mobile domain [L**3/M], by default 0.0 (no equilibrium sorption).
+    kim : float, optional
+        Linear equilibrium sorption coefficient in the immobile domain [L**3/M], by default 0.0 (no equilibrium sorption).
+    km2 : float, optional
+        First-order kinetic sorption rate in the mobile domain [1/T], by default 0.0 (no kinetic sorption).
+    kim2 : float, optional
+        First-order kinetic sorption rate in the immobile domain [1/T], by default 0.0 (no kinetic sorption).
+    lamb : float, optional
+        First-order decay rate of the aqueous phase in the mobile domain [1/T], by default 0.0 (no decay).
+    lsm1 : float, optional
+        First-order decay rate of the equilibrium sorbed phase in the mobile domain  [1/T], by default equal to `lamb`.
+    lsm2 : float, optional
+        First-order decay rate of the rate-limited sorbed phase in the mobile domain  [1/T], by default equal to `lsm1`.
+    lim : float, optional
+        First-order decay rate of the aqueous phase in the immobile domain [1/T], by default equal to `lamb`.
+    lsim1 : float, optional
+        First-order decay rate of the equilibrium sorbed phase in the immobile domain  [1/T], by default equal to `lim`.
+    lsim2 : float, optional
+        First-order decay rate of the rate-limited sorbed phase in the immobile domain  [1/T], by default equal to `lsim1`.
+    icm : float, optional
+        Initial condition of the aqueous phase in the mobile domain, by default 0.0
+    icim : float, optional
+        Initial condition of the aqueous phase in the immobile domain, by default 0.0
+    icms : float, optional
+        Initial condition of the sorbed phase in the mobile domain, by default 0.0
+    icims : float, optional
+        Initial condition of the sorbed phase in the immobile domain, by default 0.0
+    cout : float, optional
+        Outlet concentration for a finite system with a constant-concentration outlet (`idomain=3`), by default 0.0
+    domain : int, optional
+        Type of system. 1 = semi-infinite (default), 2 = finite with a zero-gradient outlet, 3 = finite with a constant-concentration outlet.
+    inflowbc : str, optional
+        Inlet boundary condition, either "dirichlet" (i.e. a constant-concentration) or "cauchy" (default, i.e. a 3th-type).
+    output : str, optional
+        Output concentration domain, either "mobile" (default) or "immobile".
+
+    Returns
+    -------
+    ndarray
+        Numpy array with computed concentrations at location(s) `x` and time(s) `t`.
+
+    References
+    -------
+    .. [sspapa_2004] MPNE1D, 2004. MPNE1D Analytical Solution: User's Guide, version 4.1. S.S. Papadopulos & Associates, Inc.
+    .. [neville_2000] Neville, C.J., Ibaraki, M., Sudicky, E.A., 2000. Solute transport with multiprocess nonequilibrium: a semi-analytical solution approach, Journal of Contaminant Hydrology 44, pp. 141-159
+
+    """
+    t = np.atleast_1d(t)
+    x = np.atleast_1d(x)
+
+    if len(t) > 1 and len(x) > 1:
+        raise ValueError('Either "t" or "x" should be of length 1')
+
+    if inflowbc == "dirichlet":
+        delta = 0.0
+    elif inflowbc == "cauchy":
+        delta = 1.0
+    else:
+        raise ValueError('inflowbc should be "dirichlet" or "cauchy"')
+
+    # set porosities
+    thm = phi * n
+    thim = (1.0 - phi) * n
+    pchk, fchk = abs(phi - 1.0), abs(f - 1.0)
+    if (pchk < 1e-10) and (fchk < 1e-10):
+        alfa = 1.0
+
+    # set darcy and dispersion flux
+    q = v * thm
+    D = al * v + Dm
+
+    # set defaults
+    if lsm1 is None:
+        lsm1 = lamb
+    if lsm2 is None:
+        lsm2 = lsm1
+    if lim is None:
+        lim = lamb
+    if lsim1 is None:
+        lsim1 = lim
+    if lsim2 is None:
+        lsim2 = lsim1
+
+    if len(t) > 1:
+        c = np.zeros_like(t)
+    else:
+        c = np.zeros_like(x)
+    if np.any(t == 0.0):
+        raise ValueError("All t should be > 0.0")
+
+    for i, ti in enumerate(t):
+        c[i] = dehoog(
+            t=ti,
+            fbar=_mpne1d_laplace,
+            c0=c0,
+            x=x,
+            q=q,
+            D=D,
+            f=f,
+            rhob=rhob,
+            thm=thm,
+            thim=thim,
+            cout=cout,
+            delta=delta,
+            pchk=pchk,
+            fchk=fchk,
+            L=L,
+            alfa=alfa,
+            fm=fm,
+            fim=fim,
+            km=km,
+            kim=kim,
+            km2=km2,
+            kim2=kim2,
+            lamb=lamb,
+            lsm1=lsm1,
+            lsm2=lsm2,
+            lim=lim,
+            lsim1=lsim1,
+            lsim2=lsim2,
+            icm=icm,
+            icim=icim,
+            icms=icms,
+            icims=icims,
+            domain=domain,
+            output=output,
+        )
+    return c

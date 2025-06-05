@@ -1,4 +1,4 @@
-from adepy.uniform import point2, stripf, stripi, gauss, pulse2
+from adepy.uniform.twoD import point2, stripf, stripi, gauss, pulse2
 import numpy as np
 from scipy.stats import multivariate_normal
 
