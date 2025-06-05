@@ -2,7 +2,7 @@
 
 AdePy contains analytical solutions for the advection-dispersion equation (ADE) describing solute transport in groundwater, written in Python. 
 
-Currently, all solutions shown in [Wexler (1992)](https://doi.org/10.3133/twri03B7) are provided as separate Python functions. These simulate 1D, 2D or 3D solute transport in uniform background flow for a variety of boundary conditions and source geometries. The solute may be subjected to linear equilibrium sorption and first-order decay. Additionally, solutions for instantaneous point pulse sources ("tracer slugs") are also provided for 1D, 2D and 3D transport.
+Currently, all solutions shown in [Wexler (1992)](https://doi.org/10.3133/twri03B7) are provided as separate Python functions. These simulate 1D, 2D or 3D solute transport in uniform background flow for a variety of boundary conditions and source geometries. The solute may be subjected to linear equilibrium sorption and first-order decay. Additionally, solutions for instantaneous point pulse sources ("tracer slugs") are also provided for 1D, 2D and 3D transport, as well as the Multi-Process Non-Equilibrium (MPNE) 1D transport model described in [Neville et al. (2000)](https://doi.org/10.1016/S0169-7722(00)00094-2).
 
 Since all equations are linear, superposition in time and space can be applied to create complex source geometries with time-varying source concentrations. Gauss-Legendre quadrature is used to solve the integrals which require numerical integration. Sequential or parallel first-order parent-daughter chain reactions are supported using the method described by [Sun & Clement (1999)](https://doi.org/10.1023/A:1006507514019).
 
@@ -27,25 +27,26 @@ Coming soon.
 
 ## Available solutions
 
-| Module     | Function         | Dimensionality | Source geometry         | Boundary type | Aquifer geometry        | Reference     |
-| -----------|------------------|----------------|-------------------------|---------------|-------------------------|---------------|
-| `uniform`  | `finite1()`      | 1D             | Inlet                   | Dirichlet     | Finite                  | Wexler (1992) |
-|            | `finite3()`      | 1D             | Inlet                   | Cauchy        | Finite                  | Wexler (1992) |
-|            | `seminf1()`      | 1D             | Inlet                   | Dirichlet     | Semi-infinite           | Wexler (1992) |
-|            | `seminf3()`      | 1D             | Inlet                   | Cauchy        | Semi-infinite           | Wexler (1992) |
-|            | `point1()`       | 1D             | Point                   | Cauchy        | Infinite                | Bear (1979)   |
-|            | `pulse1()`       | 1D             | Point                   | Pulse         | Infinite                | Bear (1979)   |
-|            |                  |                |                         |               |                         |               |
-|            | `point2()`       | 2D             | Point                   | Cauchy        | Infinite                | Wexler (1992) |
-|            | `stripf()`       | 2D             | Finite Y at X=0         | Dirichlet     | Finite Y                | Wexler (1992) |
-|            | `stripi()`       | 2D             | Finite Y at X=0         | Dirichlet     | Semi-infinite           | Wexler (1992) |
-|            | `gauss()`        | 2D             | Gaussian along Y at X=0 | Dirichlet     | Semi-infinite           | Wexler (1992) |
-|            | `pulse2()`       | 2D             | Point                   | Pulse         | Infinite                | Bear (1979)   |
-|            |                  |                |                         |               |                         |               |
-|            | `point3()`       | 3D             | Point                   | Cauchy        | Infinite                | Wexler (1992) |
-|            | `patchf()`       | 3D             | Finite Y and Z at X=0   | Dirichlet     | Finite Y and Z          | Wexler (1992) |
-|            | `patchi()`       | 3D             | Finite Y and Z at X=0   | Dirichlet     | Semi-infinite           | Wexler (1992) |
-|            | `pulse3()`       | 3D             | Point                   | Pulse         | Infinite                | Wexler (1992) |
+| Module     | Function         | Dimensionality | Source geometry         | Boundary type    | Aquifer geometry        | Reference            |
+| -----------|------------------|----------------|-------------------------|------------------|-------------------------|----------------------|
+| `uniform`  | `finite1()`      | 1D             | Inlet                   | Dirichlet        | Finite                  | Wexler (1992)        |
+|            | `finite3()`      | 1D             | Inlet                   | Cauchy           | Finite                  | Wexler (1992)        |
+|            | `seminf1()`      | 1D             | Inlet                   | Dirichlet        | Semi-infinite           | Wexler (1992)        |
+|            | `seminf3()`      | 1D             | Inlet                   | Cauchy           | Semi-infinite           | Wexler (1992)        |
+|            | `point1()`       | 1D             | Point                   | Cauchy           | Infinite                | Bear (1979)          |
+|            | `pulse1()`       | 1D             | Point                   | Pulse            | Infinite                | Bear (1979)          |
+|            | `mpne()`         | 1D             | Inlet                   | Dirichlet/Cauchy | Semi-infinite/finite    | Neville et al (2000) |
+|            |                  |                |                         |                  |                         |                      |
+|            | `point2()`       | 2D             | Point                   | Cauchy           | Infinite                | Wexler (1992)        |
+|            | `stripf()`       | 2D             | Finite Y at X=0         | Dirichlet        | Finite Y                | Wexler (1992)        |
+|            | `stripi()`       | 2D             | Finite Y at X=0         | Dirichlet        | Semi-infinite           | Wexler (1992)        |
+|            | `gauss()`        | 2D             | Gaussian along Y at X=0 | Dirichlet        | Semi-infinite           | Wexler (1992)        |
+|            | `pulse2()`       | 2D             | Point                   | Pulse            | Infinite                | Bear (1979)          |
+|            |                  |                |                         |                  |                         |                      |
+|            | `point3()`       | 3D             | Point                   | Cauchy           | Infinite                | Wexler (1992)        |
+|            | `patchf()`       | 3D             | Finite Y and Z at X=0   | Dirichlet        | Finite Y and Z          | Wexler (1992)        |
+|            | `patchi()`       | 3D             | Finite Y and Z at X=0   | Dirichlet        | Semi-infinite           | Wexler (1992)        |
+|            | `pulse3()`       | 3D             | Point                   | Pulse            | Infinite                | Wexler (1992)        |
 
 ## Example
 The fate of a contaminant plume generated by continuous injection of a point source in an aquifer with uniform background flow is simulated. The source generates a plume which extends in three dimensions and migrates due to advection and mechanical dispersion. Molecular diffusion, linear sorption and first-order decay are neglected in this example.
@@ -104,5 +105,7 @@ plt.ylabel('Concentration (mg/L)')
 
 ## References
 [Wexler, E.J., 1992. *Analytical solutions for one-, two-, and three-dimensional solute transport in ground-water systems with uniform flow*, USGS Techniques of Water-Resources Investigations 03-B7, 190 pp., https://doi.org/10.3133/twri03B7](https://doi.org/10.3133/twri03B7)
+
+[Neville, C.J., Ibaraki, M., Sudicky, E.A., 2000. *Solute transport with multiprocess nonequilibrium: a semi-analytical solution approach*, Journal of Contaminant Hydrology 44-2, pp. 141-159, https://doi.org/10.1016/S0169-7722(00)00094-2](https://doi.org/10.1016/S0169-7722(00)00094-2)
 
 [Sun, Y., Clement, T.P., 1999. *A Decomposition Method for Solving Coupled Multi–Species Reactive Transport Problems*, Transport in Porous Media 37, p. 327–346, https://doi.org/10.1023/A:1006507514019](https://doi.org/10.1023/A:1006507514019)
