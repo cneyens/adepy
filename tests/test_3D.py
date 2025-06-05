@@ -1,4 +1,4 @@
-from adepy.uniform import point3, patchi, patchf, pulse3
+from adepy.uniform.threeD import point3, patchi, patchf, pulse3
 import numpy as np
 from scipy.stats import multivariate_normal
 

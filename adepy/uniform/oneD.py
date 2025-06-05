@@ -537,6 +537,7 @@ def point1(c0, x, t, v, n, al, qi, xc, Dm=0.0, lamb=0.0, R=1.0, order=100):
     return c0 * term0 * term
 
 
+# @njit
 def _mpne1d_laplace(
     p,
     c0,
@@ -552,23 +553,23 @@ def _mpne1d_laplace(
     pchk,
     fchk,
     L,
-    alfa=1.0,
-    fm=1.0,
-    fim=1.0,
-    km=0.0,
-    kim=0.0,
-    km2=0.0,
-    kim2=0.0,
-    lm=0.0,
-    lm1=0.0,
-    lm2=0.0,
-    lim=0.0,
-    lim1=0.0,
-    lim2=0.0,
-    icm=0.0,
-    icim=0.0,
-    icms=0.0,
-    icims=0.0,
+    alfa,
+    fm,
+    fim,
+    km,
+    kim,
+    km2,
+    kim2,
+    lamb,
+    lsm1,
+    lsm2,
+    lim,
+    lsim1,
+    lsim2,
+    icm,
+    icim,
+    icms,
+    icims,
     domain=1,
     output="mobile",
 ):
@@ -577,32 +578,37 @@ def _mpne1d_laplace(
 
     # Initial condition terms
     G10 = (
-        ((1 - f) * rhob * kim2 / (p + kim2 + lim2)) * icims
+        ((1 - f) * rhob * kim2 / (p + kim2 + lsim2)) * icims
         + (thim + (1 - f) * rhob * fim * kim) * icim
     ) / (
         p * (thim + (1 - f) * rhob * fim * kim)
         + thim * lim
-        + (1 - f) * rhob * lim1 * fim * kim
-        + (1 - f) * rhob * (1 - fim) * kim * kim2 * (p + lim2) / (p + kim2 + lim2)
+        + (1 - f) * rhob * lsim1 * fim * kim
+        + (1 - f) * rhob * (1 - fim) * kim * kim2 * (p + lsim2) / (p + kim2 + lsim2)
         + alfa
     )
-    G20 = (thm + f * rhob * fm * km) * icm + (f * rhob * km2 / (p + km2 + lm2)) * icms
+    G20 = (thm + f * rhob * fm * km) * icm + (f * rhob * km2 / (p + km2 + lsm2)) * icms
 
     # Gamma terms
     GAM1 = (1 + (f * rhob * fm * km) / thm) * p
-    GAM2 = (f * rhob * (1 - fm) * km * km2 * ((p + lm2) / (p + km2 + lm2))) / thm
+    GAM2 = (f * rhob * (1 - fm) * km * km2 * ((p + lsm2) / (p + km2 + lsm2))) / thm
     GAM3 = (
         alfa
         - (alfa**2)
         / (
             (thim + (1 - f) * rhob * fim * kim) * p
             + thim * lim
-            + (1 - f) * rhob * lim1 * fim * kim
-            + (1 - f) * rhob * (1 - fim) * kim * kim2 * ((p + lim2) / (p + kim2 + lim2))
+            + (1 - f) * rhob * lsim1 * fim * kim
+            + (1 - f)
+            * rhob
+            * (1 - fim)
+            * kim
+            * kim2
+            * ((p + lsim2) / (p + kim2 + lsim2))
             + alfa
         )
     ) / thm
-    GAM4 = lm + (f * rhob * lm1 * fm * km) / thm
+    GAM4 = lamb + (f * rhob * lsm1 * fm * km) / thm
 
     B = thm * (GAM1 + GAM2 + GAM3 + GAM4)
     H1 = (q - np.sqrt(q**2 + 4 * B * thm * D)) / (2 * thm * D)
@@ -651,21 +657,26 @@ def _mpne1d_laplace(
         E1, E2 = D5 / D4, D6 / D4
         CMB = E1 * np.exp(H1 * x) + E2 * np.exp(H2 * x) + (alfa * G10 + G20) / B
     else:
-        raise ValueError("Unknown domain type")
+        raise ValueError('"domain" should be 1, 2 or 3.')
 
     if output == "mobile":
-        return CMB
+        return np.atleast_1d(CMB)
     elif output == "immobile":
         if (pchk < 1e-10) and (fchk < 1e-10):
-            return 0.0
+            return np.atleast_1d(0.0)
         denom = (
             p * (thim + (1 - f) * rhob * fim * kim)
             + thim * lim
-            + (1 - f) * rhob * lim1 * fim * kim
-            + (1 - f) * rhob * (1 - fim) * kim * kim2 * ((p + lim2) / (p + kim2 + lim2))
+            + (1 - f) * rhob * lsim1 * fim * kim
+            + (1 - f)
+            * rhob
+            * (1 - fim)
+            * kim
+            * kim2
+            * ((p + lsim2) / (p + kim2 + lsim2))
             + alfa
         )
-        return CMB * (alfa / denom) + G10
+        return np.atleast_1d(CMB * (alfa / denom) + G10)
     else:
         raise ValueError('output should be "mobile" or "immobile"')
 
@@ -676,9 +687,9 @@ def mpne(
     t,
     v,
     al,
-    L,
     n,
     rhob,
+    L=None,
     Dm=0.0,
     phi=1.0,
     f=1.0,
@@ -689,12 +700,12 @@ def mpne(
     kim=0.0,
     km2=0.0,
     kim2=0.0,
-    lm=0.0,
-    lm1=0.0,
-    lm2=0.0,
-    lim=0.0,
-    lim1=0.0,
-    lim2=0.0,
+    lamb=0.0,
+    lsm1=None,
+    lsm2=None,
+    lim=None,
+    lsim1=None,
+    lsim2=None,
     icm=0.0,
     icim=0.0,
     icms=0.0,
@@ -704,6 +715,98 @@ def mpne(
     inflowbc="cauchy",
     output="mobile",
 ):
+    """Simulate 1D non-equilibrium transport in uniform background flow using the Multi-Process Non-Equilibrium (MPNE) model.
+
+    Source: [sspapa_2004]_, [neville_2000]_
+
+    1D solute transport in uniform background flow can be modelled using a 1st- or 3th-type boundary condition at the inlet, for a semi-infinite system,
+    a finite system with constant outlet concentration, or a finite system with zero-gradient outlet. Chemical and physical non-equilibrium can be simulated seperately or simultaneously through a two-site and two-region approach, respectively.
+    The two-site approach simulates chemical non-equilibrium, allowing for both linear equilibrium and first-order sorption to occur. The two-region capability allows for mobile-immobile transport, with a kinetic first-order mass transfer rate.
+    Separate sorption coefficients can be specified for the immobile and mobile domains. Separate first-order decay rates can be specified for the aqueous (both mobile and immobile) and sorbed (mobile and immobile, for both the equilibrium and rate-limited sorbed) phases.
+    Aqueous concentration in either the mobile or the immobile domain can be returned. Either `x` or `t` should be of length 1.
+
+    The two-site and two-region models are interchangeable, so few codes include both non-equilibrium processes, unlike the MPNE model.
+
+    The source code is taken from the MNPE1D code ([sspapa_2004]_, [neville_2000]_). The system is solved in the Laplace domain and back-transformed using the De Hoog algorithm.
+
+    Parameters
+    ----------
+    c0 : float
+        Source concentration [M/L**3]
+    x : float or 1D of floats
+        x-location(s) to compute output at [L].
+    t : float or 1D of floats
+        Time(s) to compute output at [T].
+    v : float
+        Average linear groundwater flow velocity of the uniform background flow in the x-direction [L/T].
+    al : float
+        Longitudinal dispersivity [L].
+    n : float
+        Aquifer total porosity [-].
+    rhob : float
+        Dry bulk density of the aquifer [M/L**3].
+    L : float, optional
+        System length for a finite system, by default None. Only used when `domain` is 2 or 3.
+    Dm : float, optional
+        Effective molecular diffusion coefficient [L**2/T]; defaults to 0 (no molecular diffusion).
+    phi : float, optional
+        Fraction of the total porosity which is mobile [-], by default 1.0 (no immobile domain).
+    f : float, optional
+        Mass fraction of the sorbent in contact with the mobile region dissolved phase [-], by default 1.0 (no contact with the immobile domain).
+    alfa : float, optional
+        First-order mass transfer rate between the mobile and immobile domain [1/T], by default 1.0 (unity)
+    fm : float, optional
+        Fraction of equilibrium sorption sites in the mobile domain [-], by default 1.0 (only equilibrium sorption).
+    fim : float, optional
+        Fraction of equilibrium sorption sites in the immobile domain [-], by default 1.0 (only equilibrium sorption).
+    km : float, optional
+        Linear equilibrium sorption coefficient in the mobile domain [L**3/M], by default 0.0 (no equilibrium sorption).
+    kim : float, optional
+        Linear equilibrium sorption coefficient in the immobile domain [L**3/M], by default 0.0 (no equilibrium sorption).
+    km2 : float, optional
+        First-order kinetic sorption rate in the mobile domain [1/T], by default 0.0 (no kinetic sorption).
+    kim2 : float, optional
+        First-order kinetic sorption rate in the immobile domain [1/T], by default 0.0 (no kinetic sorption).
+    lamb : float, optional
+        First-order decay rate of the aqueous phase in the mobile domain [1/T], by default 0.0 (no decay).
+    lsm1 : float, optional
+        First-order decay rate of the equilibrium sorbed phase in the mobile domain  [1/T], by default equal to `lamb`.
+    lsm2 : float, optional
+        First-order decay rate of the rate-limited sorbed phase in the mobile domain  [1/T], by default equal to `lsm1`.
+    lim : float, optional
+        First-order decay rate of the aqueous phase in the immobile domain [1/T], by default equal to `lamb`.
+    lsim1 : float, optional
+        First-order decay rate of the equilibrium sorbed phase in the immobile domain  [1/T], by default equal to `lim`.
+    lsim2 : float, optional
+        First-order decay rate of the rate-limited sorbed phase in the immobile domain  [1/T], by default equal to `lsim1`.
+    icm : float, optional
+        Initial condition of the aqueous phase in the mobile domain, by default 0.0
+    icim : float, optional
+        Initial condition of the aqueous phase in the immobile domain, by default 0.0
+    icms : float, optional
+        Initial condition of the sorbed phase in the mobile domain, by default 0.0
+    icims : float, optional
+        Initial condition of the sorbed phase in the immobile domain, by default 0.0
+    cout : float, optional
+        Outlet concentration for a finite system with a constant-concentration outlet (`idomain=3`), by default 0.0
+    domain : int, optional
+        Type of system. 1 = semi-infinite (default), 2 = finite with a zero-gradient outlet, 3 = finite with a constant-concentration outlet.
+    inflowbc : str, optional
+        Inlet boundary condition, either "dirichlet" (i.e. a constant-concentration) or "cauchy" (default, i.e. a 3th-type).
+    output : str, optional
+        Output concentration domain, either "mobile" (default) or "immobile".
+
+    Returns
+    -------
+    ndarray
+        Numpy array with computed concentrations at location(s) `x` and time(s) `t`.
+
+    References
+    -------
+    .. [sspapa_2004] MPNE1D, 2004. MPNE1D Analytical Solution: User's Guide, version 4.1. S.S. Papadopulos & Associates, Inc.
+    .. [neville_2000] Neville, C.J., Ibaraki, M., Sudicky, E.A., 2000. Solute transport with multiprocess nonequilibrium: a semi-analytical solution approach, Journal of Contaminant Hydrology 44, pp. 141-159
+
+    """
     t = np.atleast_1d(t)
     x = np.atleast_1d(x)
 
@@ -715,7 +818,7 @@ def mpne(
     elif inflowbc == "cauchy":
         delta = 1.0
     else:
-        raise ValueError('inflowbc should be "dirichlet" or "cauchy')
+        raise ValueError('inflowbc should be "dirichlet" or "cauchy"')
 
     # set porosities
     thm = phi * n
@@ -728,10 +831,24 @@ def mpne(
     q = v * thm
     D = al * v + Dm
 
+    # set defaults
+    if lsm1 is None:
+        lsm1 = lamb
+    if lsm2 is None:
+        lsm2 = lsm1
+    if lim is None:
+        lim = lamb
+    if lsim1 is None:
+        lsim1 = lim
+    if lsim2 is None:
+        lsim2 = lsim1
+
     if len(t) > 1:
         c = np.zeros_like(t)
     else:
         c = np.zeros_like(x)
+    if np.any(t == 0.0):
+        raise ValueError("All t should be > 0.0")
 
     for i, ti in enumerate(t):
         c[i] = dehoog(
@@ -757,12 +874,12 @@ def mpne(
             kim=kim,
             km2=km2,
             kim2=kim2,
-            lm=lm,
-            lm1=lm1,
-            lm2=lm2,
+            lamb=lamb,
+            lsm1=lsm1,
+            lsm2=lsm2,
             lim=lim,
-            lim1=lim1,
-            lim2=lim2,
+            lsim1=lsim1,
+            lsim2=lsim2,
             icm=icm,
             icim=icim,
             icms=icms,
