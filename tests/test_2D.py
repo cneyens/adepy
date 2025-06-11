@@ -1,4 +1,4 @@
-from adepy.uniform.twoD import point2, stripf, stripi, gauss, pulse2
+from adepy.uniform.twoD import point2, stripf, stripi, gauss, pulse2, plume2
 import numpy as np
 from scipy.stats import multivariate_normal
 
@@ -185,3 +185,24 @@ def test_pulse2_shape():
     c = pulse2(m0=1.0, x=10, y=11, t=t, v=0.1, n=0.2, al=1, ah=1, lamb=0.05)
 
     assert c.shape == (len(t),)
+
+
+def test_plume2_shape():
+    dx = 10
+    dy = 10
+    x, y = np.meshgrid(np.arange(0, 101, dx), np.arange(0, 101, dy))
+    v = 0.05
+    n = 0.20
+    al = 1
+    ah = 0.1
+
+    c = point2(1.0, x, y, 5 * 365, v, n, Qa=1.0, al=al, ah=ah, xc=0.0, yc=0.0)
+
+    m0 = c * dx * dy * n
+    xn, yn = np.meshgrid(np.arange(0, 101 * 2, dx / 2), np.arange(0, 101, dy / 2))
+    cn = plume2(m0, xn, yn, 10 * 365, v, n, al, ah, x, y)
+    assert cn.shape == xn.shape
+
+    tn = np.linspace(0.1, 10 * 365, 10)
+    cn = plume2(m0, 25, 0, tn, v, n, al, ah, x, y)
+    assert cn.shape == tn.shape

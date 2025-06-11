@@ -76,7 +76,7 @@ def finite1(c0, x, t, v, al, L, Dm=0.0, lamb=0.0, R=1.0, nterm=1000):
     Returns
     -------
     ndarray
-        Numpy array with computed concentrations at location(s) `x` and time(s) `t`.
+        Numpy array with computed concentrations [M/L**3] at location(s) `x` and time(s) `t`.
 
     References
     ----------
@@ -185,7 +185,7 @@ def finite3(c0, x, t, v, al, L, Dm=0.0, lamb=0.0, R=1.0, nterm=1000):
     Returns
     -------
     ndarray
-        Numpy array with computed concentrations at location(s) `x` and time(s) `t`.
+        Numpy array with computed concentrations [M/L**3] at location(s) `x` and time(s) `t`.
 
     References
     ----------
@@ -271,7 +271,7 @@ def seminf1(c0, x, t, v, al, Dm=0.0, lamb=0.0, R=1.0):
     Returns
     -------
     ndarray
-        Numpy array with computed concentrations at location(s) `x` and time(s) `t`.
+        Numpy array with computed concentrations [M/L**3] at location(s) `x` and time(s) `t`.
 
     References
     ----------
@@ -333,7 +333,7 @@ def seminf3(c0, x, t, v, al, Dm=0.0, lamb=0.0, R=1.0):
     Returns
     -------
     ndarray
-        Numpy array with computed concentrations at location(s) `x` and time(s) `t`.
+        Numpy array with computed concentrations [M/L**3] at location(s) `x` and time(s) `t`.
 
     References
     ----------
@@ -419,7 +419,7 @@ def pulse1(m0, x, t, v, n, al, xc=0.0, Dm=0.0, lamb=0.0, R=1.0):
     Returns
     -------
     ndarray
-        Numpy array with computed concentrations at location(s) `x` and time(s) `t`.
+        Numpy array with computed concentrations [M/L**3] at location(s) `x` and time(s) `t`.
 
     References
     ----------
@@ -499,7 +499,7 @@ def point1(c0, x, t, v, n, al, qi, xc, Dm=0.0, lamb=0.0, R=1.0, order=100):
     Returns
     -------
     ndarray
-        Numpy array with computed concentrations at location(s) `x` and time(s) `t`.
+        Numpy array with computed concentrations [M/L**3] at location(s) `x` and time(s) `t`.
 
     References
     ----------
@@ -799,7 +799,7 @@ def mpne(
     Returns
     -------
     ndarray
-        Numpy array with computed concentrations at location(s) `x` and time(s) `t`.
+        Numpy array with computed concentrations [M/L**3] at location(s) `x` and time(s) `t`.
 
     References
     -------
@@ -889,4 +889,65 @@ def mpne(
             domain=domain,
             output=output,
         )
+    return c
+
+
+def plume1(m0, x, t, v, n, al, xc, Dm=0.0, lamb=0.0, R=1.0):
+    """Compute the fate of a 1D plume in an infinite aquifer with uniform background flow.
+
+    The one-dimensional advection-dispersion equation is solved for concentration at specified `x` location(s) and
+    output time(s) `t`. An infinite system with uniform background flow in the x-direction contains an initial mass `m0`
+    at locations `xc`, which is subjected to advection, dispersion and 1st-order decay. It is assumed no source terms are present.
+
+    If initial concentrations `c0` on a grid are available, e.g. from earlier results, the initial mass `m0` can be computed
+    by multiplying `c0` by the x grid spacing and the porosity `n`.
+
+    The solution is found by treating the initial mass values as individual instantaneous pulse sources with `pulse1()` and summing the results.
+
+    Parameters
+    ----------
+    m0 : 1D array of floats
+        Initial mass of the plume at locations `xc` [M].
+    x : float or 1D of floats
+        x-location(s) to compute output at [L].
+    t : float or 1D of floats
+        Time(s) to compute output at [T].
+    v : float
+        Average linear groundwater flow velocity of the uniform background flow in the x-direction [L/T].
+    n : float
+        Aquifer porosity. Should be between 0 and 1 [-].
+    al : float
+        Longitudinal dispersivity [L].
+    xc : 1D array of floats
+        x-coordinates of the initial plume [L].
+    Dm : float, optional
+        Effective molecular diffusion coefficient [L**2/T]; defaults to 0 (no molecular diffusion).
+    lamb : float, optional
+        First-order decay rate [1/T], defaults to 0 (no decay).
+    R : float, optional
+        Retardation coefficient [-]; defaults to 1 (no retardation).
+
+    Returns
+    -------
+    ndarray
+        Numpy array with computed concentrations [M/L**3] at location(s) `x` and time(s) `t`.
+
+    """
+    x = np.atleast_1d(x)
+    t = np.atleast_1d(t)
+
+    m0 = np.atleast_1d(m0).flatten()
+    xc = np.atleast_1d(xc).flatten()
+
+    if x.size > 1 and t.size > 1:
+        raise ValueError("x or t should be of length 1")
+
+    if x.size > 1:
+        c = np.zeros_like(x, dtype=float)
+    else:
+        c = np.zeros_like(t, dtype=float)
+
+    for i, (mi, xi) in enumerate(zip(m0, xc)):
+        c += pulse1(mi, x, t, v, n, al, xi, Dm, lamb, R)
+
     return c

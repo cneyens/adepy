@@ -61,7 +61,7 @@ def point3(c0, x, y, z, t, v, n, al, ah, av, Q, xc, yc, zc, Dm=0.0, lamb=0.0, R=
     Returns
     -------
     ndarray
-        Numpy array with computed concentrations at location(s) `x`, `y` and `z` and time(s) `t`.
+        Numpy array with computed concentrations [M/L**3] at location(s) `x`, `y` and `z` and time(s) `t`.
 
     References
     ----------
@@ -286,7 +286,7 @@ def patchf(
     Returns
     -------
     ndarray
-        Numpy array with computed concentrations at location(s) `x`, `y` and `z` and time(s) `t`.
+        Numpy array with computed concentrations [M/L**3] at location(s) `x`, `y` and `z` and time(s) `t`.
 
     References
     ----------
@@ -407,7 +407,7 @@ def patchi(
     Returns
     -------
     ndarray
-        Numpy array with computed concentrations at location(s) `x`, `y` and `z` and time(s) `t`.
+        Numpy array with computed concentrations [M/L**3] at location(s) `x`, `y` and `z` and time(s) `t`.
 
     References
     ----------
@@ -510,7 +510,7 @@ def pulse3(
     Returns
     -------
     ndarray
-        Numpy array with computed concentrations at location(s) `x`, `y` and `z` and time(s) `t`.
+        Numpy array with computed concentrations [M/L**3] at location(s) `x`, `y` and `z` and time(s) `t`.
 
     References
     ----------
@@ -546,3 +546,82 @@ def pulse3(
     )
 
     return m0 * term0
+
+
+def plume3(m0, x, y, z, t, v, n, al, ah, av, xc, yc, zc, Dm=0.0, lamb=0.0, R=1.0):
+    """Compute the fate of a 3D plume in an infinite aquifer with uniform background flow.
+
+    The three-dimensional advection-dispersion equation is solved for concentration at specified `x`, `y ` and `z` location(s) and
+    output time(s) `t`. An infinite system with uniform background flow in the x-direction contains an initial mass `m0`
+    at locations `xc-yc-zc`, which is subjected to advection, dispersion and 1st-order decay. It is assumed no source terms are present.
+
+    If initial concentrations `c0` on a grid are available, e.g. from earlier results, the initial mass `m0` can be computed
+    by multiplying `c0` by the x, y and z grid spacing and the porosity `n`.
+
+    The solution is found by treating the initial mass values as individual instantaneous pulse sources with `pulse3()` and summing the results.
+
+    Parameters
+    ----------
+    m0 : 1D or 2D array of floats
+        Initial mass of the plume at locations `xc-yc-zc` [M].
+    x : float or 1D or 2D array of floats
+        x-location(s) to compute output at [L].
+    y : float or 1D or 2D array of floats
+        y-location(s) to compute output at [L].
+    z : float or 1D or 2D array of floats
+        z-location(s) to compute output at [L].
+    t : float or 1D of floats
+        Time(s) to compute output at [T].
+    v : float
+        Average linear groundwater flow velocity of the uniform background flow in the x-direction [L/T].
+    n : float
+        Aquifer porosity. Should be between 0 and 1 [-].
+    al : float
+        Longitudinal dispersivity [L].
+    ah : float
+        Horizontal transverse dispersivity [L].
+    av : float
+        Vertical transverse dispersivity [L].
+    xc : 1D or 2D array of floats
+        x-coordinates of the initial plume [L].
+    yc : 1D or 2D array of floats
+        y-coordinates of the initial plume [L].
+    zc : 1D or 2D array of floats
+        z-coordinates of the initial plume [L].
+    Dm : float, optional
+        Effective molecular diffusion coefficient [L**2/T]; defaults to 0 (no molecular diffusion).
+    lamb : float, optional
+        First-order decay rate [1/T], defaults to 0 (no decay).
+    R : float, optional
+        Retardation coefficient [-]; defaults to 1 (no retardation).
+
+    Returns
+    -------
+    ndarray
+        Numpy array with computed concentrations [M/L**3] at location(s) `x`, `y` and `z` and time(s) `t`.
+
+    """
+    x = np.atleast_1d(x)
+    y = np.atleast_1d(y)
+    z = np.atleast_1d(z)
+    t = np.atleast_1d(t)
+
+    m0 = np.atleast_1d(m0).flatten()
+    xc = np.atleast_1d(xc).flatten()
+    yc = np.atleast_1d(yc).flatten()
+    zc = np.atleast_1d(zc).flatten()
+
+    if (x.size > 1 or y.size > 1 or z.size > 1) and t.size > 1:
+        raise ValueError(
+            "Either x, y and z should be of length 1, or t should be of length 1"
+        )
+
+    if x.size > 1:
+        c = np.zeros_like(x, dtype=float)
+    else:
+        c = np.zeros_like(t, dtype=float)
+
+    for i, (mi, xi, yi, zi) in enumerate(zip(m0, xc, yc, zc)):
+        c += pulse3(mi, x, y, z, t, v, n, al, ah, av, xi, yi, zi, Dm, lamb, R)
+
+    return c
