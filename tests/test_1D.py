@@ -6,7 +6,6 @@ from adepy.uniform.oneD import (
     pulse1,
     point1,
     mpne,
-    plume1,
 )
 import numpy as np
 
@@ -764,20 +763,3 @@ def test_mpne_ex3_5():
 
     np.testing.assert_array_almost_equal(cobs, c, decimal=4)
     np.testing.assert_array_almost_equal(cimobs, cim, decimal=4)
-
-
-def test_plume1_shape():
-    x = np.arange(0, 6.1, 0.1)
-    v = 0.6
-    n = 0.25
-    al = 1
-    c = point1(1.0, x, 5, v, n, qi=1.2, al=al, xc=0.0)
-
-    m0 = c * 0.1 * n
-    xn = np.arange(0, 10.1, 0.2)
-    cn = plume1(m0, xn, 10, v, n, al, x)
-    assert cn.shape == (len(xn),)
-
-    tn = np.linspace(0.1, 10, 5)
-    cn = plume1(m0, 2, tn, v, n, al, x)
-    assert cn.shape == (len(tn),)

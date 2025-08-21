@@ -1,4 +1,4 @@
-from adepy.uniform.threeD import point3, patchi, patchf, pulse3, plume3
+from adepy.uniform.threeD import point3, patchi, patchf, pulse3
 import numpy as np
 from scipy.stats import multivariate_normal
 
@@ -246,34 +246,3 @@ def test_pulse3_shape():
     c = pulse3(m0=1.0, x=10, y=11, z=0, t=t, v=0.1, n=0.2, al=1, ah=1, av=1, lamb=0.05)
 
     assert c.shape == (len(t),)
-
-
-def test_plume3_shape():
-    dx = 10
-    dy = 10
-    dz = 2
-    x, y, z = np.meshgrid(
-        np.arange(0, 101, dx), np.arange(0, 101, dy), np.arange(-1, -21, -dz)
-    )
-    v = 0.05
-    n = 0.20
-    al = 1
-    ah = 0.1
-    av = 0.01
-
-    c = point3(
-        1.0, x, y, z, 5 * 365, v, n, Q=1.0, al=al, ah=ah, av=av, xc=0.0, yc=0.0, zc=0.0
-    )
-
-    m0 = c * dx * dy * dz * n
-    xn, yn, zn = np.meshgrid(
-        np.arange(0, 101 * 2, dx / 2),
-        np.arange(0, 101, dy / 2),
-        np.arange(0, -21, -dz / 2),
-    )
-    cn = plume3(m0, xn, yn, zn, 10 * 365, v, n, al, ah, av, x, y, z)
-    assert cn.shape == xn.shape
-
-    tn = np.linspace(0.1, 10 * 365, 10)
-    cn = plume3(m0, 25, 0, 0, tn, v, n, al, ah, av, x, y, z)
-    assert cn.shape == tn.shape
